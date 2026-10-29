@@ -6,7 +6,7 @@ Pathway is an AI-assisted personal goal planning application. Users describe a g
 
 ## Status
 
-**MVP v0.1 — Phase 01 scaffold.** Controller-based API host, xUnit project, Vue frontend and PostgreSQL Compose configuration exist. Goal planning, persistence integration and session authentication are not implemented.
+**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Session authentication, Goal endpoints and planning features are not implemented.
 
 ## Tech stack
 
@@ -47,7 +47,7 @@ User accounts, cross-device recovery, calendar sync, notifications, complex task
 
 Security boundaries for anonymous sessions, deterministic scheduling, input validation, automated tests, transparent AI limitations, and small vertical slices. Design decisions are documented in `docs/decisions/`.
 
-## Run the Phase 01 scaffold
+## Run locally
 
 Prerequisites: .NET 10 SDK, Node.js 24 LTS with npm, and Docker with Compose v2 or later. Run commands from the repository root unless noted.
 
@@ -61,12 +61,13 @@ docker compose ps
 docker compose exec -T postgres pg_isready -U pathway -d pathway
 ```
 
-PostgreSQL 18 binds only to `127.0.0.1:5432`, with database/user `pathway`. Data persists in the Compose-managed `pathway_postgres_data` named volume, mounted at `/var/lib/postgresql` (PostgreSQL 18 layout). Stop with `docker compose down`; the volume is retained. The API is not connected to PostgreSQL yet; no entities or migrations exist. Changing the password in `.env` does not update credentials in an already initialized volume.
+PostgreSQL 18 binds only to `127.0.0.1:5432`, with database/user `pathway`. Data persists in the Compose-managed `pathway_postgres_data` named volume, mounted at `/var/lib/postgresql` (PostgreSQL 18 layout). Stop with `docker compose down`; the volume is retained. The API uses an explicitly configured connection string; migrations are never applied at startup. Changing the password in `.env` does not update credentials in an already initialized volume.
 
 Build and run the API:
 
 ```bash
 dotnet build backend/Pathway.slnx
+# Configure ConnectionStrings__Pathway as described below before using persistence.
 dotnet run --project backend/Pathway.Api --launch-profile http
 ```
 
@@ -82,11 +83,57 @@ npm run dev -- --host 127.0.0.1
 
 Open the URL printed by Vite (normally `http://localhost:5173`). This is a static Pathway placeholder; API integration and same-origin request configuration are deferred until endpoints exist.
 
-Build the frontend and invoke the test project:
+Build the frontend:
 
 ```bash
 npm --prefix frontend run build
-dotnet test backend/Pathway.slnx
 ```
 
-The xUnit project references the API but intentionally has no tests yet: no product behavior is implemented. Tailwind, Vitest, EF Core and its PostgreSQL provider will be added when their respective implementation work needs them. Never commit `.env` or real credentials.
+Tailwind and Vitest remain deferred. Never commit `.env` or real credentials.
+
+
+## Explicit database migrations
+
+EF Core 10 uses the Npgsql provider. Restore the pinned local EF tool from the repository root:
+
+```bash
+dotnet tool restore
+```
+
+Provide `ConnectionStrings__Pathway` in the process environment, or `ConnectionStrings:Pathway` through a private ASP.NET configuration source. The root `.env` is read by Compose, not automatically by the API. Connection string shape:
+
+```text
+Host=127.0.0.1;Port=5432;Database=pathway;Username=pathway;Password=<your-local-password>
+```
+
+With the development database started and that environment variable set, explicitly apply migrations:
+
+```bash
+dotnet ef database update --project backend/Pathway.Api
+```
+
+This command changes the database named by your configured connection string. The API never invokes `Migrate` or `EnsureCreated` on startup. Inspect SQL without applying it:
+
+```bash
+dotnet ef migrations script --project backend/Pathway.Api
+```
+
+Only sessions and goals are migrated in Phase 02. Entity timestamps must be supplied as UTC `DateTime` values; target dates use `DateOnly`. Database constraints are the final integrity boundary; friendly input validation and IANA timezone validation will be implemented in later phases.
+
+## Isolated PostgreSQL integration tests
+
+```bash
+bash scripts/test-persistence.sh
+```
+
+The script starts **only** `compose.test.yaml`, under a unique Compose project, using PostgreSQL 18 with disposable tmpfs storage and a dynamically assigned localhost port. It does not load or merge the development Compose configuration and never mounts the development volume. Its fixed password is for the disposable local test service only.
+
+The fixture requires the dedicated `PATHWAY_TEST_CONNECTION` variable (set by the script), checks the test database/role names, creates a GUID-named database, explicitly applies migrations, and drops only that database afterward. Tests run sequentially in one class and reset rows only in that generated database. Separate DbContext instances verify actual persisted round trips. The script removes the test container/storage on exit, including test failures. No development connection-string fallback exists; calling `dotnet test` without test configuration fails rather than skips these tests.
+
+Additional runner arguments can be supplied, for example:
+
+```bash
+bash scripts/test-persistence.sh --logger 'console;verbosity=normal'
+```
+
+Docker and NuGet access are required. No database migration or cleanup command in the test runner targets the development database.

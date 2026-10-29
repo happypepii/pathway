@@ -56,3 +56,7 @@ EF Core / PostgreSQL       LLM provider adapter
 ## Deployment
 
 Local development: Docker Compose PostgreSQL. Production: HTTPS reverse proxy serving frontend and routing `/api` to backend under the same origin. Exact hosting TBD.
+
+## Phase 02 persistence
+
+The API contains domain entities and an EF Core/Npgsql `PathwayDbContext` with Fluent API configurations. Only anonymous sessions and goals are migrated. Apply migrations explicitly through the local EF tool; API startup never changes the schema. Real PostgreSQL tests use a separate disposable Compose environment (see README). Authentication, ownership-enforcing use cases and Goal endpoints remain unimplemented.
