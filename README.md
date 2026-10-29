@@ -6,7 +6,7 @@ Pathway is an AI-assisted personal goal planning application. Users describe a g
 
 ## Status
 
-**Planning / MVP v0.1** — implementation not started. No functionality described below is claimed as complete.
+**MVP v0.1 — Phase 01 scaffold.** Controller-based API host, xUnit project, Vue frontend and PostgreSQL Compose configuration exist. Goal planning, persistence integration and session authentication are not implemented.
 
 ## Tech stack
 
@@ -37,7 +37,7 @@ Pathway is an AI-assisted personal goal planning application. Users describe a g
 
 ## Development
 
-Repository is designed for Windows + WSL2 (Ubuntu 24.04). Keep working files under the WSL filesystem (e.g. `~/projects/pathway`). Backend, frontend and Compose commands will be added once those components exist. Do not commit `.env` files or credentials.
+Repository is designed for Windows + WSL2 (Ubuntu 24.04). Keep working files under the WSL filesystem (e.g. `~/projects/pathway`). See the scaffold instructions below. Do not commit `.env` files or credentials.
 
 ## Non-goals for MVP
 
@@ -47,3 +47,46 @@ User accounts, cross-device recovery, calendar sync, notifications, complex task
 
 Security boundaries for anonymous sessions, deterministic scheduling, input validation, automated tests, transparent AI limitations, and small vertical slices. Design decisions are documented in `docs/decisions/`.
 
+## Run the Phase 01 scaffold
+
+Prerequisites: .NET 10 SDK, Node.js 24 LTS with npm, and Docker with Compose v2 or later. Run commands from the repository root unless noted.
+
+Start PostgreSQL:
+
+```bash
+cp .env.example .env
+# Edit .env and choose a local development password before starting.
+docker compose up -d --wait postgres
+docker compose ps
+docker compose exec -T postgres pg_isready -U pathway -d pathway
+```
+
+PostgreSQL 18 binds only to `127.0.0.1:5432`, with database/user `pathway`. Data persists in the Compose-managed `pathway_postgres_data` named volume, mounted at `/var/lib/postgresql` (PostgreSQL 18 layout). Stop with `docker compose down`; the volume is retained. The API is not connected to PostgreSQL yet; no entities or migrations exist. Changing the password in `.env` does not update credentials in an already initialized volume.
+
+Build and run the API:
+
+```bash
+dotnet build backend/Pathway.slnx
+dotnet run --project backend/Pathway.Api --launch-profile http
+```
+
+The development API listens on `http://localhost:5040`. Controllers are registered, but there are no application endpoints yet; `/` returns 404. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
+
+Run the frontend in another terminal:
+
+```bash
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1
+```
+
+Open the URL printed by Vite (normally `http://localhost:5173`). This is a static Pathway placeholder; API integration and same-origin request configuration are deferred until endpoints exist.
+
+Build the frontend and invoke the test project:
+
+```bash
+npm --prefix frontend run build
+dotnet test backend/Pathway.slnx
+```
+
+The xUnit project references the API but intentionally has no tests yet: no product behavior is implemented. Tailwind, Vitest, EF Core and its PostgreSQL provider will be added when their respective implementation work needs them. Never commit `.env` or real credentials.

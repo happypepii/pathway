@@ -32,7 +32,7 @@ Example POST `/goals`:
 }
 ```
 
-Validation: title 1–200 characters, target date not in past, weekly hours integer 1–168. Error responses use RFC 9457 Problem Details where practical.
+Validation: trim title before checking 1–200 characters; optional description maximum 2,000 characters; target date today or later in the user's IANA timezone; weekly hours integer 1–168. Use DateOnly / PostgreSQL DATE for target dates. The timezone request contract remains to be defined before implementation. Invalid inputs return ValidationProblemDetails. Successful creation saves Draft status and returns 201 Created with a Location header.
 
 ## Planning
 
@@ -80,8 +80,8 @@ Example completion body: `{ "completed": true }`.
 
 ## Error and security behavior
 
-- `400` invalid request, `401` missing/expired session, `404` resource not found or not owned (avoid existence leaks), `409` invalid state/conflict, `429` rate limited, `502/503` upstream AI failure.
-- All state-changing cookie-authenticated endpoints require CSRF defenses (ASP.NET Core antiforgery token and/or equivalent robust origin-bound protection).
+- `400` invalid request, `401` missing/invalid/expired session, `404` resource not found or not owned (avoid existence leaks), `409` invalid state/conflict, `429` rate limited, `502/503` upstream AI failure.
+- All state-changing cookie-authenticated endpoints require CSRF defenses (ASP.NET Core antiforgery protection).
 - Require ownership on every nested resource access.
 - Limit generated tasks, request body size, and external API usage; configure timeouts and rate limiting.
 - Never expose provider credentials or raw session tokens to browser JS.
@@ -89,3 +89,10 @@ Example completion body: `{ "completed": true }`.
 ## Open contract questions
 
 Exact preview edit DTO shape, pagination, idempotency for plan confirmation, and provider-specific error taxonomy are deferred to implementation design.
+
+## Approved session policy
+
+- Fixed expiration 30 days after creation; no sliding expiration. Reject expired sessions immediately.
+- Rate limit anonymous session creation to 20 requests per IP per hour initially.
+- Scheduled cleanup is deferred.
+- Raw session tokens appear only in the HttpOnly session cookie, never response bodies, logs or browser-readable storage.

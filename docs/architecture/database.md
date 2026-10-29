@@ -22,7 +22,7 @@ Future: tasks (N) ── task_dependencies ── (N) tasks
 | last_seen_at | timestamptz | not null |
 | expires_at | timestamptz | not null; indexed |
 
-Raw tokens must never be persisted or logged. Session expiry is fixed for MVP (proposed 30 days).
+Raw tokens must never be persisted or logged. Session expiry is fixed at 30 days from creation, without sliding expiration. Expired sessions are rejected immediately; scheduled cleanup is deferred.
 
 ## goals
 
@@ -31,8 +31,8 @@ Raw tokens must never be persisted or logged. Session expiry is fixed for MVP (p
 | id | uuid | PK |
 | session_id | uuid | FK → anonymous_sessions.id; indexed; not null |
 | title | varchar(200) | not null |
-| description | text | nullable |
-| target_date | date | not null |
+| description | text | nullable; maximum 2,000 characters for goals |
+| target_date | date | not null; C# DateOnly, validated against user IANA timezone |
 | available_hours_per_week | integer | not null, CHECK 1..168 |
 | status | varchar(20) | Draft / Active / Completed / Archived |
 | created_at | timestamptz | not null |
@@ -89,7 +89,7 @@ Composite PK `(task_id, depends_on_task_id)`; CHECK task_id != depends_on_task_i
 ## Delete and isolation rules
 
 - Deleting a goal cascades to its planning answers, milestones and tasks.
-- Expired anonymous sessions and associated data require a scheduled cleanup process; do not assume database expiry is automatic.
+- Expired anonymous sessions are rejected immediately. Scheduled cleanup of sessions and associated data is deferred; database expiry is not automatic.
 - Goal ownership is checked through `goals.session_id`; tasks are checked through `tasks → milestones → goals`.
 - Use a transaction for confirming/replacing a plan; never save half of a plan.
 

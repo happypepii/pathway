@@ -62,6 +62,14 @@ A new visitor can complete the full journey on a deployed app; another anonymous
 ## Open decisions
 
 - LLM provider and request budget.
-- Precise session retention and deletion policy (initial proposal: fixed 30-day expiration).
+- Timing and retention policy for scheduled deletion of expired session data (cleanup deferred).
 - Deployment host and HTTPS/same-origin reverse proxy.
 - Whether to permit plan regeneration after activation.
+
+## Approved Vertical Slice 01 decisions
+
+- Fixed 30-day anonymous sessions, without sliding expiration; reject expired sessions immediately. Scheduled cleanup is deferred.
+- Target dates use `DateOnly` / PostgreSQL `DATE`; validate today-or-later against the user's IANA timezone, not the UTC calendar date. Timezone transport and validation details will be defined before goal implementation.
+- Trim titles before validating 1–200 characters; optional descriptions are limited to 2,000 characters.
+- Weekly capacity is an integer from 1–168 hours. New goals start in Draft status.
+- Phase 01 implements scaffolding only: controller-based API, xUnit project, Vue frontend and PostgreSQL Compose. No entities, migrations, session authentication or Goal APIs yet.

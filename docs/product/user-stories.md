@@ -8,11 +8,11 @@
 
 As a user, I want to describe a goal and my time constraints so that I can begin planning.
 
-- [ ] Title is required (1–200 characters).
-- [ ] Target date must be today or later.
+- [ ] Title is trimmed and required (1–200 characters); optional description is at most 2,000 characters.
+- [ ] Target date must be today or later in the user's IANA timezone (`DateOnly` / PostgreSQL `DATE`).
 - [ ] Available hours/week is an integer between 1 and 168.
 - [ ] A draft goal is saved under the current anonymous session.
-- [ ] Invalid input returns a clear validation response.
+- [ ] Invalid input returns ValidationProblemDetails; successful creation returns 201 Created with Location.
 
 ### US-02 — Provide planning context
 

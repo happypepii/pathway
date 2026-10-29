@@ -44,7 +44,7 @@ EF Core / PostgreSQL       LLM provider adapter
 - An anonymous session is a bearer credential, **not a verified user identity**.
 - Store only hash of the opaque random session token in PostgreSQL.
 - Verify ownership in every read/write path, including task endpoints via their goal.
-- Use same-origin HTTPS, secure cookie flags, CSRF protection, rate limits and safe error handling.
+- Use same-origin HTTPS, secure cookie flags, ASP.NET Core antiforgery protection for cookie-authenticated state changes, rate limits and safe error handling.
 - Limit LLM output size and avoid storing/logging sensitive prompts unnecessarily.
 
 ## Testing
