@@ -19,3 +19,8 @@
 
 # Secrets
 **/secrets/
+
+# Browser test reports may contain private application state.
+**/test-results/
+**/playwright-report/
+/artifacts/

@@ -1,146 +1,49 @@
 # Pathway
 
-**Turn overwhelming goals into actionable plans.**
+Turn overwhelming goals into actionable plans.
 
-Pathway is an AI-assisted personal goal planning application. Users describe a goal, answer a few questions, review a generated task breakdown, receive a capacity-aware schedule, and track progress.
+Vue 3 + TypeScript, ASP.NET Core .NET 10, EF Core/PostgreSQL 18. A single API handles anonymous sessions, Goal CRUD, three optional planning questions, editable plan previews, deterministic scheduling, atomic confirmation and task progress.
 
-## Status
+**Status:** MVP implementation and backend verification are available; live LLM provider/model acceptance is pending. Missing provider configuration returns a safe 503. No paid service, live-model result or public deployment is claimed. See [implementation evidence](docs/engineering/mvp-implementation.md).
 
-**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Read-only session checking is available at `GET /api/v1/sessions/me`; session creation with CSRF protection and IP rate limiting is implemented; Goal endpoints and planning features are not implemented.
+## Requirements
 
-## Tech stack
+- WSL2/Linux, .NET 10 SDK, Node.js 24/npm.
+- Docker Engine/Desktop with Compose and WSL integration.
+- OpenSSL/Python 3 for the isolated browser harness.
+- A configured planning provider. The current optional adapter supports Ollama's /api/generate protocol; no model is downloaded automatically.
 
-- Frontend: Vue 3, TypeScript, Vite, Tailwind CSS
-- Backend: ASP.NET Core Web API (.NET 10), C#
-- Persistence: PostgreSQL, Entity Framework Core
-- Tests: xUnit, Vitest
-- Local infrastructure: Docker Compose
-- AI: provider-backed structured plan generation (provider not yet selected)
+## Local database and migrations
 
-## MVP journey
-
-1. Start an anonymous session.
-2. Create a draft goal with a target date and available hours per week.
-3. Answer short planning questions.
-4. Generate and review a plan preview.
-5. Edit tasks and confirm the plan.
-6. View progress and mark tasks complete.
-
-## Documentation
-
-- [PRD](docs/product/prd.md)
-- [User stories and acceptance criteria](docs/product/user-stories.md)
-- [Architecture](docs/architecture/overview.md)
-- [Data model](docs/architecture/database.md)
-- [API contract](docs/architecture/api.md)
-- [Architecture decisions](docs/decisions/)
-
-## Development
-
-Repository is designed for Windows + WSL2 (Ubuntu 24.04). Keep working files under the WSL filesystem (e.g. `~/projects/pathway`). See the scaffold instructions below. Do not commit `.env` files or credentials.
-
-## Non-goals for MVP
-
-User accounts, cross-device recovery, calendar sync, notifications, complex task dependency scheduling, Kubernetes, Kafka and Redis.
-
-## Engineering priorities
-
-Security boundaries for anonymous sessions, deterministic scheduling, input validation, automated tests, transparent AI limitations, and small vertical slices. Design decisions are documented in `docs/decisions/`.
-
-## Run locally
-
-Prerequisites: .NET 10 SDK, Node.js 24 LTS with npm, and Docker with Compose v2 or later. Run commands from the repository root unless noted.
-
-Start PostgreSQL:
+From repository root:
 
 ```bash
 cp .env.example .env
-# Edit .env and choose a local development password before starting.
+# Set your own POSTGRES_PASSWORD in .env before starting.
 docker compose up -d --wait postgres
-docker compose ps
-docker compose exec -T postgres pg_isready -U pathway -d pathway
-```
-
-PostgreSQL 18 binds only to `127.0.0.1:5432`, with database/user `pathway`. Data persists in the Compose-managed `pathway_postgres_data` named volume, mounted at `/var/lib/postgresql` (PostgreSQL 18 layout). Stop with `docker compose down`; the volume is retained. The API uses an explicitly configured connection string; migrations are never applied at startup. Changing the password in `.env` does not update credentials in an already initialized volume.
-
-Build and run the API:
-
-```bash
-dotnet build backend/Pathway.slnx
-# Configure ConnectionStrings__Pathway as described below before using persistence.
-dotnet run --project backend/Pathway.Api --launch-profile http
-```
-
-The development API listens on `http://localhost:5040`. `GET /api/v1/sessions/me` checks the secure session cookie; `/` returns 404. Session issuance requires HTTPS and an Antiforgery cookie/header pair. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
-
-Run the frontend in another terminal:
-
-```bash
-cd frontend
-npm ci
-npm run dev -- --host 127.0.0.1
-```
-
-Open the URL printed by Vite (normally `http://localhost:5173`). The frontend checks the current session and creates one only on 401. For session-enabled development, use the HTTPS setup below; the dev server requires certificate paths.
-
-Build the frontend:
-
-```bash
-npm --prefix frontend run build
-```
-
-Tailwind and Vitest remain deferred. Never commit `.env` or real credentials.
-
-
-## Explicit database migrations
-
-EF Core 10 uses the Npgsql provider. Restore the pinned local EF tool from the repository root:
-
-```bash
 dotnet tool restore
 ```
 
-Provide `ConnectionStrings__Pathway` in the process environment, or `ConnectionStrings:Pathway` through a private ASP.NET configuration source. The root `.env` is read by Compose, not automatically by the API. Connection string shape:
+Provide the API connection string through a private configuration source or process environment:
 
 ```text
-Host=127.0.0.1;Port=5432;Database=pathway;Username=pathway;Password=<your-local-password>
+ConnectionStrings__Pathway=Host=127.0.0.1;Port=5432;Database=pathway;Username=pathway;Password=<your-local-password>
 ```
 
-With the development database started and that environment variable set, explicitly apply migrations:
+Compose reads .env; the API does not. Never commit .env, API keys, connection strings or certificate private keys. The development database is stored in pathway_postgres_data and bound only to 127.0.0.1:5432.
 
-```bash
-dotnet ef database update --project backend/Pathway.Api
-```
-
-This command changes the database named by your configured connection string. The API never invokes `Migrate` or `EnsureCreated` on startup. Inspect SQL without applying it:
+Inspect and explicitly apply migrations to the database you configured:
 
 ```bash
 dotnet ef migrations script --project backend/Pathway.Api
+dotnet ef database update --project backend/Pathway.Api
 ```
 
-Only sessions and goals are migrated in Phase 02. Entity timestamps must be supplied as UTC `DateTime` values; target dates use `DateOnly`. Database constraints are the final integrity boundary; friendly input validation and IANA timezone validation will be implemented in later phases.
+Startup never changes schema. The three migrations create sessions/goals, add timezone/concurrency fields, then create answers/milestones/tasks. The timezone migration uses UTC for any pre-existing goals. Scheduled expired-data cleanup is deferred.
 
-## Isolated PostgreSQL integration tests
+## HTTPS development
 
-```bash
-bash scripts/test-persistence.sh
-```
-
-The script starts **only** `compose.test.yaml`, under a unique Compose project, using PostgreSQL 18 with disposable tmpfs storage and a dynamically assigned localhost port. It does not load or merge the development Compose configuration and never mounts the development volume. Its fixed password is for the disposable local test service only.
-
-The fixture requires the dedicated `PATHWAY_TEST_CONNECTION` variable (set by the script), checks the test database/role names, creates a GUID-named database, explicitly applies migrations, and drops only that database afterward. Tests run sequentially in one class and reset rows only in that generated database. Separate DbContext instances verify actual persisted round trips. The script removes the test container/storage on exit, including test failures. No development connection-string fallback exists; calling `dotnet test` without test configuration fails rather than skips these tests.
-
-Additional runner arguments can be supplied, for example:
-
-```bash
-bash scripts/test-persistence.sh --logger 'console;verbosity=normal'
-```
-
-Docker and NuGet access are required. No database migration or cleanup command in the test runner targets the development database.
-
-## HTTPS session development
-
-Export the ASP.NET localhost development certificate to an ignored directory (unencrypted private key: local development only):
+Export a development-only localhost certificate in the ignored secrets directory:
 
 ```bash
 mkdir -p frontend/secrets
@@ -148,38 +51,119 @@ dotnet dev-certs https --trust
 dotnet dev-certs https --export-path frontend/secrets/localhost.pem --format Pem --no-password
 ```
 
-Trust the public certificate in the browser/host OS too if WSL certificate trust does not propagate. Never commit the private key. Configure the usual private database connection string and apply migrations first.
+The exported .key is unencrypted for local tooling only. Trust the public certificate in the browser/host OS as needed: WSL certificate trust may not propagate to Windows. Use localhost consistently.
 
-Backend terminal, from repository root:
+Backend terminal, from repository root, with the private database connection configured:
 
 ```bash
 export ASPNETCORE_Kestrel__Certificates__Default__Path="$PWD/frontend/secrets/localhost.pem"
 export ASPNETCORE_Kestrel__Certificates__Default__KeyPath="$PWD/frontend/secrets/localhost.key"
+# Set Planning__Endpoint / Planning__Model after choosing a provider/model (below).
 dotnet run --project backend/Pathway.Api --launch-profile https
 ```
 
-Frontend terminal, from repository root:
+Frontend terminal:
 
 ```bash
+npm --prefix frontend ci
 export PATHWAY_DEV_CERT="$PWD/frontend/secrets/localhost.pem"
 export PATHWAY_DEV_KEY="$PWD/frontend/secrets/localhost.key"
 npm --prefix frontend run dev
 ```
 
-Visit **https://localhost:5173**. Use localhost consistently. Vite validates the Backend certificate using this public certificate as its CA; do not disable verification. The browser uses relative /api URLs through the HTTPS proxy, with no cross-origin requests or CORS configuration. Secure cookies remain mandatory in Development and Production. The HTTP launch profile remains useful for unrelated scaffolding, not session bootstrap.
+Open **https://localhost:5173**. Vite proxies relative /api requests to https://localhost:7040 and validates the Backend certificate using the supplied public certificate. There is no CORS policy, no HTTP cookie fallback, and no TLS verification bypass in application configuration.
 
-Browser smoke check: a first visit should call GET sessions/me (401), GET antiforgery (200), POST sessions/anonymous (201). Refresh should call only GET sessions/me (200). Inspect cookie attributes and confirm neither the session token nor CSRF request token appears in local/session storage. Direct POST without the CSRF pair returns 400; after 20 POST attempts from one IP, further POSTs return 429 while GET remains available. Do not copy tokens into tickets or logs.
+The frontend first calls GET /api/v1/sessions/me; only 401 triggers Antiforgery bootstrap and POST session creation. Cookies are HttpOnly, Secure and host-only. Session duration is fixed at 30 days. Clearing cookies or changing devices can lose access; no accounts/recovery exist.
 
-Frontend bootstrap tests (Node 24 built-in runner; Vitest remains deferred):
+## Planning provider configuration
 
-```bash
-node --experimental-strip-types --test --test-reporter=spec frontend/tests/session.test.ts
+Provider/model/budget is an open decision. No provider is called until the operator explicitly configures it. The optional Ollama protocol adapter accepts:
+
+```text
+Planning__Endpoint=http://127.0.0.1:11434/api/generate
+Planning__Model=<an-existing-operator-selected-model>
 ```
 
-Database-independent backend checks:
+Endpoint/model are server-only trusted configuration, never browser input. Use a local endpoint or HTTPS for remote sensitive data. No Ollama server or model is installed by this repository. Before enabling a remote provider, consider data transfer and any usage cost. Other provider protocols can implement IPlanGenerator without changing scheduling/persistence.
+
+The adapter requests a structured schema, allows 90 seconds, limits output to 128 KiB and validates titles/counts/whole-hour estimates. It performs no automatic retry. Provider failure gives 503; malformed/oversized output gives 502, with no saved tasks.
+
+## Manual acceptance
+
+1. Create a goal with title, target date and weekly whole hours; timezone comes from the browser. Invalid input must show validation errors.
+2. Edit the Draft; answer or skip the three optional questions.
+3. With a real provider configured, generate a preview. Edit task titles/hours or remove tasks. No tasks are saved at this stage.
+4. Confirm. The server revalidates, recalculates dates and atomically saves the plan. Infeasible dates show a warning without reducing effort.
+5. Mark tasks complete; progress/next action change. Finish all tasks, then reopen one. Refresh and verify persistence.
+6. Edit an activated goal's title/description; its scheduling constraints stay fixed. Delete the goal to remove its descendants.
+7. Open an independent browser context: it must not see or mutate the first session's goals/tasks.
+8. Inspect cookies and browser storage: session bearer token is only in the HttpOnly cookie, not JSON/localStorage/sessionStorage. POST without the Antiforgery pair returns 400.
+
+Do not paste tokens, private answers or credentials into logs/reports.
+
+## Automated verification
+
+Full backend suite on a unique disposable real PostgreSQL instance:
 
 ```bash
-dotnet test backend/Pathway.slnx --filter 'FullyQualifiedName~SessionSecurityTests|FullyQualifiedName~SessionTokenTests|FullyQualifiedName~AnonymousSessionPolicyTests|FullyQualifiedName~AnonymousSessionInputTests'
+bash scripts/test-persistence.sh
 ```
 
-Run the full PostgreSQL suite using bash scripts/test-persistence.sh. See docs/engineering/session-bootstrap.md for this milestone's actual verification status and deployment limitations.
+This uses only compose.test.yaml, a dedicated role/database, random host port and tmpfs storage. The fixture creates a GUID-named database, applies migrations explicitly and removes it after testing. No development database fallback exists. Calling dotnet test without database configuration fails the integration fixtures rather than silently skipping them.
+
+Frontend unit checks and build:
+
+```bash
+node --experimental-strip-types --test --test-reporter=spec frontend/tests/*.test.ts
+npm --prefix frontend run build
+```
+
+The dependency-free Node runner currently tests session bootstrap and the API client. Vitest remains deferred; Playwright provides UI integration coverage.
+
+Browser suite prerequisites:
+
+```bash
+frontend/node_modules/.bin/playwright install chromium
+# Linux/WSL: this may require your sudo password.
+sudo frontend/node_modules/.bin/playwright install-deps chromium
+bash scripts/test-e2e.sh
+```
+
+Leave ports 5173/7040 free. The harness starts isolated PostgreSQL, applies migrations, generates ephemeral localhost TLS, and runs real Chromium against Vue/HTTPS API/PostgreSQL. It uses an explicitly synthetic local HTTP upstream fixture through the actual provider adapter. This verifies integration and failure handling, **not live-model quality**. Test-only browser certificate acceptance does not weaken the app's Vite upstream TLS validation. Trace/video/screenshots are disabled to avoid capturing credentials/private input.
+
+To verify the full HTTPS HTTP journey while browser libraries are unavailable:
+```bash
+PATHWAY_E2E_HTTP_ONLY=1 bash scripts/test-e2e.sh
+```
+This explicitly skips browser tests and must not be reported as a browser pass.
+
+The runner terminates its own processes and removes its disposable container/network, including failures. It never uses development data.
+
+## Single-origin local publish
+
+```bash
+bash scripts/publish-local.sh
+# Configure database/Planning and an HTTPS certificate as above.
+# Apply migrations explicitly before starting.
+cd artifacts/publish
+dotnet Pathway.Api.dll --urls https://localhost:7040
+```
+
+The publish script builds Vue and copies assets to API wwwroot. Kestrel serves frontend and /api under the same HTTPS origin; no Vite server is needed. Use an appropriate certificate/private configuration for public hosting. Host selection, trusted proxy headers, persistent Data Protection keys and operational backups remain deployment work; no public deployment is provisioned here.
+
+## Constraints and trade-offs
+
+- Sequential scheduling distributes capacity evenly across seven days; dates are estimates, not time-of-day reservations. Whole hours at the boundary, integer minutes in PostgreSQL.
+- Activation is Draft-only. No replacement/regeneration of active plans; preview version mismatch/repeated confirmation returns 409.
+- Session POST limit: 20 per connection IP per hour, including reuse and CSRF failures. GET-first initialization avoids consuming POST quota on normal refreshes.
+- Preview limit: five per IP per minute. Limiters are process-local and reset on restart; NAT shares quota. Forwarded headers are not trusted automatically.
+- Anonymous session possession is authorization, not verified identity. Every nested operation checks ownership; unknown/not-owned resources return 404.
+- No DAG, accounts, notifications, cross-device sync, distributed infrastructure or automatic schema/data cleanup.
+
+## Documentation
+
+- [PRD](docs/product/prd.md), [user stories](docs/product/user-stories.md)
+- [Architecture](docs/architecture/overview.md), [database](docs/architecture/database.md), [API](docs/architecture/api.md)
+- [ADRs](docs/decisions/), [engineering evidence](docs/engineering/), [portfolio attribution](docs/portfolio.md)
+
+Local commits are permitted for milestone tracking. Nothing is pushed automatically.

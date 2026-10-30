@@ -106,3 +106,17 @@ Avoid adding complexity solely for portfolio presentation.
 - Verified: full backend suite with real PostgreSQL — 61 passed, 0 failed, 0 skipped (includes the 19 database-independent tests); 5 frontend bootstrap tests, frontend build, and an HTTPS Vite-to-Kestrel smoke experiment.
 - Docker was restored by the developer; the isolated PostgreSQL runner passed and removed its test container/network. Pending: developer review, browser certificate/cookie behavior and full browser-to-database journey.
 - No final resume achievement or developer-led implementation claim is made from this milestone.
+
+
+## 8. MVP Goal / Planning / Tracking — Acceptance Pending
+
+**Status:** Implemented by AI — not yet reviewed; live provider and browser acceptance pending.
+
+**Evidence:** [MVP implementation record](engineering/mvp-implementation.md), [ADR-004](decisions/004-mvp-planning-contracts.md).
+
+- Developer contribution: defined requirements/autonomy boundaries, approved security direction and restored Docker. Codex generated implementation/tests/documentation; do not claim developer-led implementation or measured performance improvement.
+- Implemented: owned Goal CRUD, IANA calendar validation, optional questions, bounded provider adapter, deterministic scheduling, unsaved editable previews, versioned transactional activation, complete/reopen tasks and derived dashboard progress.
+- Verified: 98 backend tests on real PostgreSQL; 10 frontend unit tests; TypeScript/production build; HTTPS publish/static/API checks; full network HTTP journey through actual adapter with synthetic upstream and PostgreSQL.
+- Pending: actual provider/model selection and live generation, Chromium UI run (missing system libraries), developer review and public deployment.
+- Trade-offs: single monolith, direct EF Core, no new production infrastructure; local UUID concurrency and PostgreSQL transaction/row lock. See ADR for alternatives.
+- No final resume achievement is asserted while MVP acceptance remains incomplete.
