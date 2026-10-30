@@ -15,6 +15,8 @@ public sealed class GoalConfiguration : IEntityTypeConfiguration<Goal>
             table.HasCheckConstraint("ck_goals_capacity", "available_hours_per_week BETWEEN 1 AND 168");
             table.HasCheckConstraint("ck_goals_status", "status IN ('Draft', 'Active', 'Completed', 'Archived')");
         });
+        entity.Property(x => x.TimeZoneId).HasColumnName("time_zone_id").HasMaxLength(100).IsRequired();
+        entity.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         entity.Property(x => x.SessionId).HasColumnName("session_id");

@@ -36,12 +36,12 @@ public sealed class PersistenceTests(PostgresFixture database) : IClassFixture<P
     public async Task Migration_creates_only_expected_tables_columns_and_indexes()
     {
         await using var context = database.CreateContext();
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(context.Database.GetMigrations(), await context.Database.GetAppliedMigrationsAsync());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
         Assert.False(context.Database.HasPendingModelChanges());
         var tables = await context.Database.SqlQueryRaw<string>(
             "SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_schema = 'public'").ToListAsync();
-        Assert.Equal(new[] { "__EFMigrationsHistory", "anonymous_sessions", "goals" }, tables.Order().ToArray());
+        Assert.Equal(new[] { "__EFMigrationsHistory", "anonymous_sessions", "goals", "milestones", "planning_answers", "tasks" }, tables.Order().ToArray());
         var columns = await context.Database.SqlQueryRaw<string>(
             "SELECT column_name AS \"Value\" FROM information_schema.columns WHERE table_name = 'anonymous_sessions' AND table_schema = 'public'").ToListAsync();
         Assert.Equal(new[] { "created_at", "expires_at", "id", "last_seen_at", "token_hash" }, columns.Order().ToArray());

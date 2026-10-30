@@ -93,6 +93,12 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("target_date");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -102,6 +108,11 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("version");
 
                     b.HasKey("Id");
 
@@ -120,6 +131,130 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Pathway.Api.Domain.Milestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GoalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoalId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("milestones", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_milestones_title", "char_length(title) BETWEEN 1 AND 200");
+                        });
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.PlanTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("EstimatedMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("estimated_minutes");
+
+                    b.Property<Guid>("MilestoneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("milestone_id");
+
+                    b.Property<DateOnly?>("ScheduledEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("scheduled_end_date");
+
+                    b.Property<DateOnly?>("ScheduledStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("scheduled_start_date");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MilestoneId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("tasks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tasks_dates", "scheduled_end_date >= scheduled_start_date");
+
+                            t.HasCheckConstraint("ck_tasks_effort", "estimated_minutes > 0 AND estimated_minutes % 60 = 0");
+
+                            t.HasCheckConstraint("ck_tasks_title", "char_length(title) BETWEEN 1 AND 200");
+                        });
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.PlanningAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("text")
+                        .HasColumnName("answer");
+
+                    b.Property<Guid>("GoalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_id");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("question");
+
+                    b.Property<string>("QuestionKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("question_key");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoalId", "QuestionKey")
+                        .IsUnique();
+
+                    b.ToTable("planning_answers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_answers_length", "char_length(answer) <= 2000");
+                        });
+                });
+
             modelBuilder.Entity("Pathway.Api.Domain.Goal", b =>
                 {
                     b.HasOne("Pathway.Api.Domain.AnonymousSession", "Session")
@@ -131,9 +266,54 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                     b.Navigation("Session");
                 });
 
+            modelBuilder.Entity("Pathway.Api.Domain.Milestone", b =>
+                {
+                    b.HasOne("Pathway.Api.Domain.Goal", "Goal")
+                        .WithMany("Milestones")
+                        .HasForeignKey("GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Goal");
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.PlanTask", b =>
+                {
+                    b.HasOne("Pathway.Api.Domain.Milestone", "Milestone")
+                        .WithMany("Tasks")
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Milestone");
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.PlanningAnswer", b =>
+                {
+                    b.HasOne("Pathway.Api.Domain.Goal", "Goal")
+                        .WithMany("PlanningAnswers")
+                        .HasForeignKey("GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Goal");
+                });
+
             modelBuilder.Entity("Pathway.Api.Domain.AnonymousSession", b =>
                 {
                     b.Navigation("Goals");
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.Goal", b =>
+                {
+                    b.Navigation("Milestones");
+
+                    b.Navigation("PlanningAnswers");
+                });
+
+            modelBuilder.Entity("Pathway.Api.Domain.Milestone", b =>
+                {
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

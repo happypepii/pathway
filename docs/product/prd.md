@@ -1,7 +1,7 @@
 # Pathway — Product Requirements Document
 
 **Version:** 0.1  
-**Status:** Proposed / not implemented  
+**Status:** MVP implementation in progress; automated backend verification passed, live provider acceptance pending
 **Target:** 3-week MVP, week 4 as buffer
 
 ## Vision
@@ -73,3 +73,7 @@ A new visitor can complete the full journey on a deployed app; another anonymous
 - Trim titles before validating 1–200 characters; optional descriptions are limited to 2,000 characters.
 - Weekly capacity is an integer from 1–168 hours. New goals start in Draft status.
 - Phase 01 implements scaffolding only: controller-based API, xUnit project, Vue frontend and PostgreSQL Compose. No entities, migrations, session authentication or Goal APIs yet.
+
+## Autonomous MVP implementation decisions
+
+See ADR-004 for IANA timezone transport/storage, editing rules, plan limits, version checks, activation transactions and task status derivation. Regeneration after activation is deferred. No paid LLM service is enabled automatically; provider/model selection remains an open acceptance dependency.

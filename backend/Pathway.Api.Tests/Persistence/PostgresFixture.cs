@@ -11,8 +11,8 @@ public sealed class PostgresFixture : IAsyncLifetime
     private string testConnection = null!;
     private bool created;
 
-    public PathwayDbContext CreateContext() => new(new DbContextOptionsBuilder<PathwayDbContext>()
-        .UseNpgsql(testConnection).Options);
+    public PathwayDbContext CreateContext(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors) => new(new DbContextOptionsBuilder<PathwayDbContext>()
+        .UseNpgsql(testConnection).AddInterceptors(interceptors).Options);
 
     public async Task InitializeAsync()
     {

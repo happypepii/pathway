@@ -1,6 +1,6 @@
-# REST API Contract — Proposed v0.1
+# REST API Contract — v0.1
 
-Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. This is a design contract; anonymous session and Antiforgery endpoints are implemented; Goal and planning endpoints remain proposed.
+Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. Anonymous session, Goal, planning and task endpoints are implemented. Live LLM configuration/verification is pending; see the engineering record.
 
 ## Anonymous sessions
 
@@ -33,11 +33,12 @@ Example POST `/goals`:
   "title": "Build a personal website",
   "description": "Portfolio and deployment",
   "targetDate": "2026-11-30",
-  "availableHoursPerWeek": 10
+  "availableHoursPerWeek": 10,
+  "timeZoneId": "Asia/Taipei"
 }
 ```
 
-Validation: trim title before checking 1–200 characters; optional description maximum 2,000 characters; target date today or later in the user's IANA timezone; weekly hours integer 1–168. Use DateOnly / PostgreSQL DATE for target dates. The timezone request contract remains to be defined before implementation. Invalid inputs return ValidationProblemDetails. Successful creation saves Draft status and returns 201 Created with a Location header.
+Validation: trim title before checking 1–200 characters; optional description maximum 2,000 characters; target date today or later in the user's IANA timezone; weekly hours integer 1–168. Use DateOnly / PostgreSQL DATE for target dates. timeZoneId is required, must be an IANA identifier (UTC accepted), and is stored with the goal. Invalid inputs return ValidationProblemDetails. Successful creation saves Draft status and returns 201 Created with a Location header.
 
 ## Planning
 
@@ -93,7 +94,7 @@ Example completion body: `{ "completed": true }`.
 
 ## Open contract questions
 
-Exact preview edit DTO shape, pagination, idempotency for plan confirmation, and provider-specific error taxonomy are deferred to implementation design.
+Pagination is deferred. A repeated plan confirmation returns 409; confirmation does not replace an active plan.
 
 ## Approved session policy
 
@@ -121,3 +122,34 @@ Windows begin when a partition is first used; this is not a sliding window. The 
 ### Local origin
 
 Open only https://localhost:5173. Vite serves HTTPS and proxies relative /api requests to https://localhost:7040 with certificate verification enabled. No CORS policy is enabled. Both cookies are issued for the browser-visible localhost host with no Domain and Path=/; browser requests and CSRF header remain same-origin. Use the same trusted localhost certificate for Vite and Kestrel (README setup). No secure=false or relaxed Production cookie policy is introduced.
+
+## Implemented planning and progress contracts
+
+GET /goals returns the current session's goals, newest first, with status, progress (rounded task-count percentage), nextTask and milestones. GET /goals/{id} also returns questions, answers, goalVersion and saved schedule summary. A different owner receives 404.
+
+PATCH /goals/{id} accepts the same full form as creation. Drafts allow all changes; activated goals allow title/description edits only. Planning constraints remain immutable after activation. DELETE cascades to answers, milestones and tasks.
+
+PUT /goals/{id}/planning-answers accepts:
+```json
+{ "experience": null, "outcome": "Maintain three healthy plants", "constraints": "Small balcony" }
+```
+All three answers are optional (2,000 characters each). The fixed questions are returned by goal detail. Answer editing requires Draft and returns 204.
+
+POST /goals/{id}/plan-preview has no body. It uses stored answers, returns milestones, schedule and goalVersion, and saves no milestones/tasks. It is limited to five attempts per IP per minute. Unavailable/unconfigured/timeout provider returns 503; invalid or oversized provider response returns 502. Requests have no automatic provider retry.
+
+POST /goals/{id}/plan accepts:
+```json
+{
+  "goalVersion": "<UUID from preview>",
+  "milestones": [
+    { "title": "Preparation", "tasks": [{ "title": "Gather materials", "estimatedHours": 2 }] }
+  ]
+}
+```
+Limits: 1–10 milestones, 1–100 tasks per milestone, 100 tasks overall, trimmed 1–200 character titles, whole-hour effort 1–1,000 per task. Preview/confirmation request limit is 128 KiB; provider response limit is 128 KiB with bounded JSON depth. Unknown dates from clients are ignored.
+
+Confirmation locks the owned goal, verifies Draft and version, revalidates and recomputes dates using the current local date, saves atomically and returns updated goal detail. Stale/repeated/concurrent confirmation returns 409. Infeasible plans may be explicitly confirmed; their schedule warnings remain visible. Activation/regeneration is not reversible through this endpoint.
+
+PATCH /tasks/{id}/completion accepts a required boolean completed and returns 204. Reopening is supported. Parent goal becomes Completed only when all tasks are complete; reopening makes it Active. PATCH /tasks/{id} accepts a trimmed title (1–200 characters) to rename a task; effort/date edits after activation are deferred. Every task query checks ownership through milestone → goal.
+
+Concurrent modifications return 409 and require refresh/retry. GET detail and list responses use no-store. Frontend writes use the Antiforgery cookie/header pair described above.

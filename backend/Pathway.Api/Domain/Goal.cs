@@ -13,6 +13,10 @@ public sealed class Goal
     public string? Description { get; set; }
     public DateOnly TargetDate { get; set; }
     public int AvailableHoursPerWeek { get; set; }
+    public string TimeZoneId { get; set; } = "UTC";
+    public Guid Version { get; set; } = Guid.NewGuid();
+    public List<PlanningAnswer> PlanningAnswers { get; set; } = [];
+    public List<Milestone> Milestones { get; set; } = [];
     public GoalStatus Status { get; set; } = GoalStatus.Draft;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
