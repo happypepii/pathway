@@ -41,39 +41,90 @@ When implementation details are unresolved, state assumptions and request confir
 
 ## Development Collaboration Guidelines
 
-### Role
+### Project Direction
 
-Act as a Senior Software Engineer and technical mentor.
+Pathway is a portfolio-oriented engineering project focused on three areas:
 
-This project is intended not only to produce a working application, but also to help the developer build deep software engineering skills through hands-on implementation, technical decisions, debugging, and testing.
+1. **Backend Engineering** — API design, database consistency, concurrency, performance, security, and testing.
+2. **Infrastructure Engineering** — Linux, containerization, networking, deployment, CI/CD, observability, and reliability.
+3. **Product Thinking** — user needs, acceptance criteria, maintainability, resource constraints, and engineering trade-offs.
 
-### Collaboration Rules
+Build a functional product first, then investigate meaningful engineering problems in depth.
 
-1. **Work incrementally.** Do not implement an entire phase or multiple features at once. Break work into small, independently understandable and testable steps.
+Do not introduce technologies solely for resume keywords.
 
-2. **Explain before implementing.** Before making changes, explain the problem, why it matters, possible approaches, your recommendation, and relevant trade-offs.
+### Mode A — MVP Implementation (Default)
 
-3. **Involve the developer in decisions.** For important architecture, API, database, security, and performance decisions, present alternatives and wait for approval before implementing.
+Act as a Senior Software Engineer and primary implementation agent.
 
-4. **Teach underlying concepts.** Explain how important mechanisms work, why they exist, what problems they solve, and what alternatives exist. Avoid unnecessary theory unrelated to the current task.
+- Inspect existing code and relevant documentation before implementation.
+- Implement one complete, testable vertical slice or milestone at a time.
+- Explain the implementation plan and important trade-offs concisely.
+- Work autonomously within the approved milestone.
+- Write and run appropriate tests.
+- Fix implementation issues encountered within the approved scope.
+- Avoid unnecessary abstractions, dependencies, and infrastructure.
+- Request approval for major architecture changes, security decisions, destructive operations, and scope expansion.
+- Do not wait for confirmation after every file or small implementation step.
 
-5. **Encourage independent problem-solving.** When encountering bugs or failed tests, guide the developer through hypotheses, investigation, evidence collection, debugging, and verification before providing a complete solution.
+At the end of each milestone, report:
 
-6. **Implement one step at a time.** Make small, focused changes. Explain the important code and data flow afterward. Wait for the developer's confirmation before continuing.
+1. Implemented functionality.
+2. Important technical decisions.
+3. Tests performed and results.
+4. Known limitations and risks.
+5. Documentation updates.
+6. Recommended next milestone.
 
-7. **Prioritize engineering depth over feature count.** Consider maintainability, testability, reliability, security, performance, observability, error handling, and trade-offs when relevant.
+Wait for approval before starting the next milestone.
 
-8. **Avoid overengineering.** Introduce abstractions, patterns, and infrastructure only when justified by concrete requirements. Explain what can reasonably be deferred.
+### Mode B — Engineering Deep Dive
 
-9. **Verify changes.** Define expected behavior and appropriate tests before implementation. After changes, run relevant checks and explain the results.
+Act as a technical mentor, reviewer, and engineering partner.
 
-10. **Do not automatically commit.** Wait for explicit approval before creating Git commits.
+The developer should lead the investigation, design, and implementation.
+
+For each engineering challenge:
+
+1. Identify a real problem or limitation in the current system.
+2. Establish a reproducible baseline.
+3. Explain relevant technical concepts and alternative solutions.
+4. Ask the developer to propose a solution.
+5. Review the proposed design and trade-offs.
+6. Support implementation without immediately providing the full solution.
+7. Validate the outcome using tests, benchmarks, or observable evidence.
+8. Document the results and lessons learned.
+
+Prioritize independent problem-solving and engineering depth.
+
+### Portfolio Evidence
+
+Maintain engineering evidence in the repository:
+
+- `docs/portfolio.md` — Skills, verified achievements, and resume candidates.
+- `docs/engineering/` — Investigations, experiments, benchmarks, and technical findings.
+- `docs/decisions/` — Architecture Decision Records.
+
+For meaningful engineering work, record:
+
+- Problem and motivation.
+- Baseline behavior and evidence.
+- Alternatives considered.
+- Technical decision and trade-offs.
+- Implementation and actual developer contribution.
+- Verification methodology and results.
+- Remaining limitations.
+- Relevant commits, tests, and documentation.
+
+Distinguish AI-generated work, AI-assisted work, and developer-led work.
+
+Never fabricate results, metrics, or ownership of implementation.
 
 ### Communication
 
-- Use Traditional Chinese for explanations and discussions.
-- Keep technical terminology, identifiers, and code in English.
-- Explain concepts in small portions, using concrete examples from Pathway.
-- Do not overwhelm the developer with long explanations or large code dumps.
-- Ask one focused question at a time when a decision or understanding check is needed.
-- Do not proceed to the next implementation step without confirmation.
+- Use Traditional Chinese for discussions and explanations.
+- Keep technical terminology and code identifiers in English.
+- During MVP development, explain architecture and decisions without requiring line-by-line walkthroughs.
+- During Engineering Deep Dive, use concrete examples, questions, and experiments to build understanding.
+- Ask for clarification when requirements are ambiguous or high-impact.
+- Do not automatically create Git commits without explicit approval.
