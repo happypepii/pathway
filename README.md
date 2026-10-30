@@ -6,7 +6,7 @@ Pathway is an AI-assisted personal goal planning application. Users describe a g
 
 ## Status
 
-**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Read-only session checking is available at `GET /api/v1/sessions/me`; session creation, Goal endpoints and planning features are not implemented.
+**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Read-only session checking is available at `GET /api/v1/sessions/me`; session creation with CSRF protection and IP rate limiting is implemented; Goal endpoints and planning features are not implemented.
 
 ## Tech stack
 
@@ -71,7 +71,7 @@ dotnet build backend/Pathway.slnx
 dotnet run --project backend/Pathway.Api --launch-profile http
 ```
 
-The development API listens on `http://localhost:5040`. `GET /api/v1/sessions/me` checks the secure session cookie; `/` returns 404. Session issuance is not implemented yet. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
+The development API listens on `http://localhost:5040`. `GET /api/v1/sessions/me` checks the secure session cookie; `/` returns 404. Session issuance requires HTTPS and an Antiforgery cookie/header pair. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
 
 Run the frontend in another terminal:
 
@@ -81,7 +81,7 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Open the URL printed by Vite (normally `http://localhost:5173`). This is a static Pathway placeholder; API integration and same-origin request configuration are deferred until endpoints exist.
+Open the URL printed by Vite (normally `http://localhost:5173`). The frontend checks the current session and creates one only on 401. For session-enabled development, use the HTTPS setup below; the dev server requires certificate paths.
 
 Build the frontend:
 
@@ -137,3 +137,49 @@ bash scripts/test-persistence.sh --logger 'console;verbosity=normal'
 ```
 
 Docker and NuGet access are required. No database migration or cleanup command in the test runner targets the development database.
+
+## HTTPS session development
+
+Export the ASP.NET localhost development certificate to an ignored directory (unencrypted private key: local development only):
+
+```bash
+mkdir -p frontend/secrets
+dotnet dev-certs https --trust
+dotnet dev-certs https --export-path frontend/secrets/localhost.pem --format Pem --no-password
+```
+
+Trust the public certificate in the browser/host OS too if WSL certificate trust does not propagate. Never commit the private key. Configure the usual private database connection string and apply migrations first.
+
+Backend terminal, from repository root:
+
+```bash
+export ASPNETCORE_Kestrel__Certificates__Default__Path="$PWD/frontend/secrets/localhost.pem"
+export ASPNETCORE_Kestrel__Certificates__Default__KeyPath="$PWD/frontend/secrets/localhost.key"
+dotnet run --project backend/Pathway.Api --launch-profile https
+```
+
+Frontend terminal, from repository root:
+
+```bash
+export PATHWAY_DEV_CERT="$PWD/frontend/secrets/localhost.pem"
+export PATHWAY_DEV_KEY="$PWD/frontend/secrets/localhost.key"
+npm --prefix frontend run dev
+```
+
+Visit **https://localhost:5173**. Use localhost consistently. Vite validates the Backend certificate using this public certificate as its CA; do not disable verification. The browser uses relative /api URLs through the HTTPS proxy, with no cross-origin requests or CORS configuration. Secure cookies remain mandatory in Development and Production. The HTTP launch profile remains useful for unrelated scaffolding, not session bootstrap.
+
+Browser smoke check: a first visit should call GET sessions/me (401), GET antiforgery (200), POST sessions/anonymous (201). Refresh should call only GET sessions/me (200). Inspect cookie attributes and confirm neither the session token nor CSRF request token appears in local/session storage. Direct POST without the CSRF pair returns 400; after 20 POST attempts from one IP, further POSTs return 429 while GET remains available. Do not copy tokens into tickets or logs.
+
+Frontend bootstrap tests (Node 24 built-in runner; Vitest remains deferred):
+
+```bash
+node --experimental-strip-types --test --test-reporter=spec frontend/tests/session.test.ts
+```
+
+Database-independent backend checks:
+
+```bash
+dotnet test backend/Pathway.slnx --filter 'FullyQualifiedName~SessionSecurityTests|FullyQualifiedName~SessionTokenTests|FullyQualifiedName~AnonymousSessionPolicyTests|FullyQualifiedName~AnonymousSessionInputTests'
+```
+
+Run the full PostgreSQL suite using bash scripts/test-persistence.sh. See docs/engineering/session-bootstrap.md for this milestone's actual verification status and deployment limitations.

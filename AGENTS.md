@@ -76,7 +76,7 @@ At the end of each milestone, report:
 5. Documentation updates.
 6. Recommended next milestone.
 
-Wait for approval before starting the next milestone.
+Continue automatically to the next MVP milestone after completing verification. Request approval only for major scope, architecture, security, cost, or destructive decisions.
 
 ### Mode B — Engineering Deep Dive
 
