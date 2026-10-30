@@ -1,6 +1,6 @@
 # REST API Contract — Proposed v0.1
 
-Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. This is a design contract, **not yet implemented**.
+Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. This is a design contract; only `GET /sessions/me` is implemented so far.
 
 ## Anonymous sessions
 
@@ -10,6 +10,10 @@ Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. This is a 
 | GET | `/sessions/me` | Check session state, not user identity |
 
 Cookie: `__Host-pathway_session`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, no Domain. Same-origin HTTPS deployment is preferred. For local HTTP development, use a separate dev-only cookie policy; never weaken production defaults.
+
+### Implemented session check
+
+`GET /sessions/me` reads `__Host-pathway_session` and returns `200 OK` with an empty body for a valid session. Missing, malformed, unknown or expired tokens return `401 Unauthorized`. Responses use `Cache-Control: no-store`; no credentials or session identifiers are returned. The endpoint does not create sessions, update last-seen or expiry, or set cookies. Session creation and the local HTTP development cookie policy remain unimplemented.
 
 ## Goals
 

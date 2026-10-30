@@ -59,4 +59,4 @@ Local development: Docker Compose PostgreSQL. Production: HTTPS reverse proxy se
 
 ## Phase 02 persistence
 
-The API contains domain entities and an EF Core/Npgsql `PathwayDbContext` with Fluent API configurations. Only anonymous sessions and goals are migrated. Apply migrations explicitly through the local EF tool; API startup never changes the schema. Real PostgreSQL tests use a separate disposable Compose environment (see README). Authentication, ownership-enforcing use cases and Goal endpoints remain unimplemented.
+The API contains domain entities and an EF Core/Npgsql `PathwayDbContext` with Fluent API configurations. Only anonymous sessions and goals are migrated. Apply migrations explicitly through the local EF tool; API startup never changes the schema. Real PostgreSQL tests use a separate disposable Compose environment (see README). `GET /api/v1/sessions/me` resolves the secure session cookie through `AnonymousSessionService`; DI supplies the session policy and `TimeProvider.System`. Session creation, authorization for goal operations and Goal endpoints remain unimplemented.

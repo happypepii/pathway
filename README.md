@@ -6,7 +6,7 @@ Pathway is an AI-assisted personal goal planning application. Users describe a g
 
 ## Status
 
-**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Session authentication, Goal endpoints and planning features are not implemented.
+**MVP v0.1 — Phase 02 persistence.** EF Core entities, PostgreSQL mappings, the initial migration and isolated integration tests exist. Read-only session checking is available at `GET /api/v1/sessions/me`; session creation, Goal endpoints and planning features are not implemented.
 
 ## Tech stack
 
@@ -71,7 +71,7 @@ dotnet build backend/Pathway.slnx
 dotnet run --project backend/Pathway.Api --launch-profile http
 ```
 
-The development API listens on `http://localhost:5040`. Controllers are registered, but there are no application endpoints yet; `/` returns 404. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
+The development API listens on `http://localhost:5040`. `GET /api/v1/sessions/me` checks the secure session cookie; `/` returns 404. Session issuance is not implemented yet. The optional `https` launch profile also listens on `https://localhost:7040` and requires a trusted development certificate. Production retains HTTPS redirection; development HTTP is scaffolding only, not the production cookie policy.
 
 Run the frontend in another terminal:
 
