@@ -1,7 +1,7 @@
 # Pathway — Product Requirements Document
 
 **Version:** 0.1  
-**Status:** MVP implementation in progress; automated backend verification passed, live provider acceptance pending
+**Status:** MVP functionality implemented; automated backend and Chromium journey verification passed; live provider and public deployment acceptance pending
 **Target:** 3-week MVP, week 4 as buffer
 
 ## Vision

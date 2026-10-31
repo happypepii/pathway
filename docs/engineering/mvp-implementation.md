@@ -41,7 +41,71 @@ All PostgreSQL tests use compose.test.yaml in unique disposable Compose projects
 ## Limitations and pending acceptance
 
 - Provider/model/budget decision and live-model validation remain pending; missing provider configuration gives 503. The test upstream is not exposed as a production fallback.
-- Browser UI acceptance is blocked by missing Linux Chromium libraries; the developer was asked to run the README install-deps command. The HTTP smoke uses a client, not browser DOM execution.
+- Browser UI acceptance was initially blocked by missing Linux Chromium libraries; this was resolved on 2026-10-31 (see follow-up results below).
 - Public hosting/HTTPS proxy and Data Protection key persistence remain deployment choices; no public deployment is claimed.
 - Process-local limiters reset on restart, NAT shares quota, and expired-session cleanup remains deferred.
 - No DAG, accounts or cross-device recovery, matching MVP exclusions.
+
+## MVP acceptance follow-up — 2026-10-31
+
+Scope: US-02/US-03 planning context and generation, plus full-journey acceptance.
+Code inspection identified a navigation race: while saving answers before generating
+a preview, the brand link or back button could clear the selected goal. Generation
+would then attempt to read a missing goal ID. Navigation now preserves the selected
+goal during an operation: the back button is disabled and the brand handler checks
+the existing busy state. This uses the current single-operation UI model without
+adding cancellation or changing API/security contracts.
+
+Codex generated this fix, its regression case and this evidence; developer review
+and browser execution remain pending. The new Playwright case delays answer saving,
+attempts navigation, then verifies preview generation and navigation after completion.
+The journey helper now chooses a future date dynamically instead of expiring in 2027.
+
+Actual verification in this follow-up:
+
+- Frontend unit tests: **10 passed, 0 failed**, using Node's
+  `--experimental-strip-types --test --test-isolation=none --test-reporter=spec`.
+- Vue TypeScript/production build passed.
+- Database-independent backend subset: **47 passed, 0 failed, 0 skipped**
+  (Scheduler, PlanGenerator, GoalValidation, SessionToken, AnonymousSessionPolicy,
+  AnonymousSessionInput and SessionSecurity tests). Execution required leaving the
+  sandbox because MSBuild named pipe creation was denied inside it.
+- Playwright discovery loaded **4 cases**; this is not a browser execution pass.
+- Full PostgreSQL runner could not start: Docker is unavailable in the current WSL
+  environment. Earlier 98-test results above are historical, not a rerun today.
+- Chromium dependency installation was retried but requires an interactive sudo
+  password. No browser pass is claimed, including for the new regression case.
+
+Next acceptance work: restore Docker WSL integration, install Chromium system
+dependencies, run `bash scripts/test-e2e.sh` and `bash scripts/test-persistence.sh`,
+then validate an operator-selected real model and public same-origin HTTPS host.
+Provider/model/budget and deployment decisions remain unselected; no service was
+enabled or provisioned by this follow-up.
+
+Environment recovery later on 2026-10-31: the developer enabled Docker Desktop
+WSL integration. The full disposable PostgreSQL runner was rerun successfully:
+**98 passed, 0 failed, 0 skipped**, and its container/network were removed.
+Chromium installation still needs interactive sudo. README now invokes Node via
+its absolute path because sudo's PATH does not include the developer's nvm Node.
+Browser execution remains pending.
+
+### Chromium acceptance completed — 2026-10-31
+
+The developer installed Chromium system dependencies using the corrected sudo/Node
+command. Codex then ran `bash scripts/test-e2e.sh` successfully (exit 0):
+
+- **4 Chromium tests passed, 0 failed**: complete goal/preview/edit/confirm/progress/
+  reopen/refresh/delete journey with session isolation and cookie/storage checks;
+  provider failure without saved tasks; navigation during delayed answer saving;
+  stale-preview conflict preserving the editable preview.
+- HTTPS HTTP journey also passed, including unsaved preview, ownership isolation
+  and missing-CSRF rejection through the actual HTTP provider adapter.
+- Backend build passed with zero warnings/errors; all migrations applied to the
+  isolated PostgreSQL database. Test services terminated and the disposable
+  container/network were removed.
+
+The navigation regression is now browser-verified. The synthetic upstream remains
+a protocol fixture, so these results establish no live-model quality or provider
+availability. Current remaining acceptance dependencies are operator-selected real
+provider/model verification and public same-origin HTTPS deployment. Developer code
+review remains pending; no Git commit or production deployment was made in this run.

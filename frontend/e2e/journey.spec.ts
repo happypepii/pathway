@@ -6,7 +6,9 @@ async function createGoal(page: Page, title: string) {
   await page.getByRole('button', { name: '新增目標', exact: true }).click()
   await page.getByLabel('目標名稱').fill(title)
   await page.getByLabel('補充說明').fill('A private learning goal')
-  await page.getByLabel('目標日期').fill('2027-12-31')
+  const targetDate = new Date()
+  targetDate.setUTCFullYear(targetDate.getUTCFullYear() + 1)
+  await page.getByLabel('目標日期').fill(targetDate.toISOString().slice(0, 10))
   await page.getByLabel('每週可投入時數').fill('7')
   await page.getByRole('button', { name: '儲存目標', exact: true }).click()
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
@@ -61,6 +63,34 @@ test('provider error is shown and leaves goal editable without saved tasks', asy
   await expect(page.getByRole('alert')).toContainText('規劃服務暫時無法使用')
   await expect(page.getByRole('button', { name: '產生計畫預覽' })).toBeEnabled()
   await expect(page.getByRole('checkbox')).toHaveCount(0)
+})
+
+test('navigation preserves the selected goal while planning answers are being saved', async ({ page }) => {
+  await createGoal(page, '規劃期間保留目標')
+  let releaseSave!: () => void
+  let notifySaveStarted!: () => void
+  const saveStarted = new Promise<void>(resolve => { notifySaveStarted = resolve })
+  const saveReleased = new Promise<void>(resolve => { releaseSave = resolve })
+  await page.route('**/planning-answers', async route => {
+    notifySaveStarted()
+    await saveReleased
+    await route.continue()
+  })
+  await page.getByRole('button', { name: '產生計畫預覽' }).click()
+  await saveStarted
+  try {
+    await expect(page.getByRole('button', { name: '← 所有目標' })).toBeDisabled()
+    const brand = page.getByRole('link', { name: /Pathway/ })
+    await expect(brand).toHaveAttribute('aria-disabled', 'true')
+    // Dispatch a click even though assistive tools treat aria-disabled as disabled.
+    await brand.evaluate(element => (element as HTMLAnchorElement).click())
+    await expect(page.getByRole('heading', { name: '規劃期間保留目標', exact: true })).toBeVisible()
+  } finally {
+    releaseSave()
+  }
+  await expect(page.getByRole('heading', { name: '確認之前，先調整成你的步調' })).toBeVisible()
+  await page.getByRole('button', { name: '← 所有目標' }).click()
+  await expect(page.getByRole('heading', { name: '把大目標，變成下一小步。' })).toBeVisible()
 })
 
 test('a stale preview fails confirmation and preserves editable preview', async ({ page }) => {

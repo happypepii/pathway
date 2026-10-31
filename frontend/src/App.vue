@@ -30,6 +30,11 @@ async function initialize() {
   await refresh()
   ready.value = true
 }
+function showGoals() {
+  if (busy.value) return
+  selected.value = null
+  showForm.value = false
+}
 function newGoal() {
   Object.assign(form, { title: '', description: '', targetDate: today, availableHoursPerWeek: 7, timeZoneId: timezone })
   editing.value = false
@@ -102,7 +107,7 @@ onMounted(() => run(initialize))
 
 <template>
   <div class="shell">
-    <header><a class="brand" href="/" @click.prevent="selected = null; showForm = false">Pathway<span>一步步，走向你想完成的事。</span></a><span class="badge">匿名工作空間</span></header>
+    <header><a class="brand" href="/" :aria-disabled="busy" @click.prevent="showGoals">Pathway<span>一步步，走向你想完成的事。</span></a><span class="badge">匿名工作空間</span></header>
     <main>
       <div v-if="error" role="alert" class="alert">{{ error }} <button v-if="!ready" :disabled="busy" @click="run(initialize)">重試連線</button></div>
       <p v-if="!ready && !error" role="status">正在開啟你的工作空間…</p>
@@ -117,7 +122,7 @@ onMounted(() => run(initialize))
           <div class="actions"><button :disabled="busy" type="submit">{{ busy ? '儲存中…' : '儲存目標' }}</button><button type="button" class="secondary" :disabled="busy" @click="showForm = false">取消</button></div>
         </form>
         <section v-else-if="selected" class="card">
-          <button class="link" @click="selected = null">← 所有目標</button>
+          <button class="link" :disabled="busy" @click="showGoals">← 所有目標</button>
           <p class="badge">{{ selected.status }}</p><p>{{ selected.description }}</p>
           <p>目標日期 {{ selected.targetDate }} · 每週 {{ selected.availableHoursPerWeek }} 小時</p>
           <div class="actions"><button class="secondary" :disabled="busy" @click="editGoal">編輯目標</button><button class="danger" :disabled="busy" @click="run(deleteGoal)">刪除目標</button></div>

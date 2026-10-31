@@ -4,7 +4,7 @@ Turn overwhelming goals into actionable plans.
 
 Vue 3 + TypeScript, ASP.NET Core .NET 10, EF Core/PostgreSQL 18. A single API handles anonymous sessions, Goal CRUD, three optional planning questions, editable plan previews, deterministic scheduling, atomic confirmation and task progress.
 
-**Status:** MVP implementation and backend verification are available; live LLM provider/model acceptance is pending. Missing provider configuration returns a safe 503. No paid service, live-model result or public deployment is claimed. See [implementation evidence](docs/engineering/mvp-implementation.md).
+**Status:** MVP functionality implemented; 98 backend tests and four Chromium journey tests passed. Live LLM provider/model and public deployment acceptance remain pending. Missing provider configuration returns a safe 503. No paid service, live-model result or public deployment is claimed. See [implementation evidence](docs/engineering/mvp-implementation.md).
 
 ## Requirements
 
@@ -125,11 +125,13 @@ Browser suite prerequisites:
 ```bash
 frontend/node_modules/.bin/playwright install chromium
 # Linux/WSL: this may require your sudo password.
-sudo frontend/node_modules/.bin/playwright install-deps chromium
+sudo "$(command -v node)" frontend/node_modules/playwright/cli.js install-deps chromium
 bash scripts/test-e2e.sh
 ```
 
 Leave ports 5173/7040 free. The harness starts isolated PostgreSQL, applies migrations, generates ephemeral localhost TLS, and runs real Chromium against Vue/HTTPS API/PostgreSQL. It uses an explicitly synthetic local HTTP upstream fixture through the actual provider adapter. This verifies integration and failure handling, **not live-model quality**. Test-only browser certificate acceptance does not weaken the app's Vite upstream TLS validation. Trace/video/screenshots are disabled to avoid capturing credentials/private input.
+
+The explicit Node path in the sudo command supports nvm installations, where sudo's PATH may not contain `node`. Run it from your own terminal so sudo can request your password.
 
 To verify the full HTTPS HTTP journey while browser libraries are unavailable:
 ```bash

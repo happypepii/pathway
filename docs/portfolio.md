@@ -110,13 +110,31 @@ Avoid adding complexity solely for portfolio presentation.
 
 ## 8. MVP Goal / Planning / Tracking — Acceptance Pending
 
-**Status:** Implemented by AI — not yet reviewed; live provider and browser acceptance pending.
+**Status:** Implemented by AI — not yet reviewed; automated backend/browser verification passed, live provider and public deployment acceptance pending.
 
 **Evidence:** [MVP implementation record](engineering/mvp-implementation.md), [ADR-004](decisions/004-mvp-planning-contracts.md).
 
 - Developer contribution: defined requirements/autonomy boundaries, approved security direction and restored Docker. Codex generated implementation/tests/documentation; do not claim developer-led implementation or measured performance improvement.
 - Implemented: owned Goal CRUD, IANA calendar validation, optional questions, bounded provider adapter, deterministic scheduling, unsaved editable previews, versioned transactional activation, complete/reopen tasks and derived dashboard progress.
 - Verified: 98 backend tests on real PostgreSQL; 10 frontend unit tests; TypeScript/production build; HTTPS publish/static/API checks; full network HTTP journey through actual adapter with synthetic upstream and PostgreSQL.
-- Pending: actual provider/model selection and live generation, Chromium UI run (missing system libraries), developer review and public deployment.
+- Pending: actual provider/model selection and live generation, developer review and public deployment.
 - Trade-offs: single monolith, direct EF Core, no new production infrastructure; local UUID concurrency and PostgreSQL transaction/row lock. See ADR for alternatives.
 - No final resume achievement is asserted while MVP acceptance remains incomplete.
+
+### Acceptance follow-up — 2026-10-31
+
+- Codex fixed a planning/navigation race and added a delayed-request browser
+  regression case; developer review and browser execution remain pending.
+- Verified today: 47 database-independent backend tests, 10 frontend unit tests,
+  Vue TypeScript/production build and discovery of four Playwright cases.
+- Full PostgreSQL rerun is blocked by unavailable Docker in WSL; browser execution
+  is blocked by system libraries requiring interactive sudo installation. See the
+  [follow-up evidence](engineering/mvp-implementation.md) for methodology and limits.
+
+Later on the same day, the developer restored Docker WSL integration and installed
+Chromium dependencies. Codex reran the full backend suite (**98 passed**) and the
+HTTPS browser harness (**4 Chromium tests passed**, plus the HTTP journey). The
+disposable containers/networks were removed. The navigation regression is now
+browser-verified. Earlier environment blockers above are resolved; live-model and
+public deployment acceptance remain pending. Implementation/tests remain
+AI-generated under developer requirements, not developer-led implementation.

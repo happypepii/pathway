@@ -1,6 +1,6 @@
 # User Stories and Acceptance Criteria
 
-**Status:** MVP functionality implemented and backend-tested; live provider and browser acceptance remain pending (see docs/engineering/mvp-implementation.md). A **user journey** spans the entire product; an **epic** groups related capabilities; each **user story** captures independently valuable behavior. Implementation tasks are not user stories.
+**Status:** MVP functionality implemented; backend and four Chromium journey tests passed. Live provider and public deployment acceptance remain pending (see docs/engineering/mvp-implementation.md). A **user journey** spans the entire product; an **epic** groups related capabilities; each **user story** captures independently valuable behavior. Implementation tasks are not user stories.
 
 ## Epic: Goal planning and execution
 
@@ -74,4 +74,4 @@ As a user, I want to mark tasks complete and see the next step so that I can kee
 
 ## Verification scope
 
-Checked items identify implemented behavior backed by backend/unit/HTTP integration evidence; they do not claim live-model generation or completed browser UI acceptance. The provider adapter has validated-schema/failure tests and a synthetic protocol fixture. A real provider/model must still be selected and exercised before declaring the MVP complete.
+Checked items identify implemented behavior backed by backend/unit/HTTP integration evidence and four Chromium journey tests. Browser coverage verifies the main flow, provider failure, navigation during planning and stale-preview conflict; it does not exhaust every UI state. The provider adapter has validated-schema/failure tests and a synthetic protocol fixture. A real provider/model must still be selected and exercised, and public deployment verified, before declaring the MVP complete.
