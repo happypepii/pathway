@@ -24,11 +24,18 @@ public sealed class MilestoneConfiguration : IEntityTypeConfiguration<Milestone>
 {
     public void Configure(EntityTypeBuilder<Milestone> e)
     {
-        e.ToTable("milestones", t => t.HasCheckConstraint("ck_milestones_title", "char_length(title) BETWEEN 1 AND 200"));
+        e.ToTable("milestones", t =>
+        {
+            t.HasCheckConstraint("ck_milestones_title", "char_length(title) BETWEEN 1 AND 200");
+            t.HasCheckConstraint("ck_milestones_resources", "jsonb_typeof(resources_json) = 'array' AND jsonb_array_length(resources_json) <= 2");
+        });
         e.HasKey(x => x.Id);
         e.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         e.Property(x => x.GoalId).HasColumnName("goal_id");
         e.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
+        e.Property(x => x.Description).HasColumnName("description").HasMaxLength(1000);
+        e.Property(x => x.Outcome).HasColumnName("outcome").HasMaxLength(500);
+        e.Property(x => x.ResourcesJson).HasColumnName("resources_json").HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb");
         e.Property(x => x.SortOrder).HasColumnName("sort_order");
         e.HasIndex(x => new { x.GoalId, x.SortOrder }).IsUnique();
         e.HasOne(x => x.Goal).WithMany(x => x.Milestones).HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.Cascade);
@@ -44,12 +51,14 @@ public sealed class PlanTaskConfiguration : IEntityTypeConfiguration<PlanTask>
             t.HasCheckConstraint("ck_tasks_effort", "estimated_minutes > 0 AND estimated_minutes % 60 = 0");
             t.HasCheckConstraint("ck_tasks_dates", "scheduled_end_date >= scheduled_start_date");
             t.HasCheckConstraint("ck_tasks_title", "char_length(title) BETWEEN 1 AND 200");
+            t.HasCheckConstraint("ck_tasks_key_points", "cardinality(key_points) <= 3");
         });
         e.HasKey(x => x.Id);
         e.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
         e.Property(x => x.MilestoneId).HasColumnName("milestone_id");
         e.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
         e.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        e.Property(x => x.KeyPoints).HasColumnName("key_points").HasColumnType("text[]").HasDefaultValueSql("ARRAY[]::text[]");
         e.Property(x => x.EstimatedMinutes).HasColumnName("estimated_minutes");
         e.Property(x => x.ScheduledStartDate).HasColumnName("scheduled_start_date").HasColumnType("date");
         e.Property(x => x.ScheduledEndDate).HasColumnName("scheduled_end_date").HasColumnType("date");

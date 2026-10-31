@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Pathway.Api.Application.Goals;
 using Pathway.Api.Domain;
 using Pathway.Api.Infrastructure.Persistence;
@@ -9,6 +10,7 @@ public sealed record ConfirmationInput(List<MilestoneInput> Milestones, Guid Goa
 
 public sealed class PlanningService(PathwayDbContext database, TimeProvider clock, IPlanGenerator generator)
 {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private async Task<Goal> Owned(Guid owner, Guid id, CancellationToken ct) =>
         await database.Goals.Include(x => x.PlanningAnswers).Include(x => x.Milestones).ThenInclude(x => x.Tasks)
             .AsSplitQuery().SingleOrDefaultAsync(x => x.Id == id && x.SessionId == owner, ct)
@@ -85,12 +87,15 @@ public sealed class PlanningService(PathwayDbContext database, TimeProvider cloc
         for (var m = 0; m < preview.Milestones.Count; m++)
         {
             var source = preview.Milestones[m];
-            var milestone = new Milestone { GoalId = id, Title = source.Title, SortOrder = m };
+            var milestone = new Milestone { GoalId = id, Title = source.Title, SortOrder = m,
+                Description = source.Description, Outcome = source.Outcome,
+                ResourcesJson = JsonSerializer.Serialize(source.Resources ?? [], Json) };
             for (var t = 0; t < source.Tasks.Count; t++)
             {
                 var task = source.Tasks[t];
                 milestone.Tasks.Add(new PlanTask { Title = task.Title, EstimatedMinutes = task.EstimatedHours * 60,
-                    SortOrder = t, ScheduledStartDate = task.ScheduledStartDate, ScheduledEndDate = task.ScheduledEndDate });
+                    SortOrder = t, ScheduledStartDate = task.ScheduledStartDate, ScheduledEndDate = task.ScheduledEndDate,
+                    Description = task.Description, KeyPoints = task.KeyPoints?.ToArray() ?? [] });
             }
             goal.Milestones.Add(milestone);
         }
@@ -121,10 +126,11 @@ public sealed class PlanningService(PathwayDbContext database, TimeProvider cloc
             Answers = goal.PlanningAnswers.ToDictionary(x => x.QuestionKey, x => x.Answer),
             Milestones = goal.Milestones.OrderBy(x => x.SortOrder).Select(m => new
             {
-                m.Id, m.Title,
+                m.Id, m.Title, m.Description, m.Outcome,
+                Resources = JsonSerializer.Deserialize<List<ResourceInput>>(m.ResourcesJson, Json) ?? [],
                 Tasks = m.Tasks.OrderBy(x => x.SortOrder).Select(t => new
                 {
-                    t.Id, t.Title, EstimatedHours = t.EstimatedMinutes / 60,
+                    t.Id, t.Title, t.Description, t.KeyPoints, EstimatedHours = t.EstimatedMinutes / 60,
                     t.ScheduledStartDate, t.ScheduledEndDate, Completed = t.CompletedAt is not null
                 })
             })

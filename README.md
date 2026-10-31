@@ -4,7 +4,13 @@ Turn overwhelming goals into actionable plans.
 
 Vue 3 + TypeScript, ASP.NET Core .NET 10, EF Core/PostgreSQL 18. A single API handles anonymous sessions, Goal CRUD, three optional planning questions, editable plan previews, deterministic scheduling, atomic confirmation and task progress.
 
-**Status:** MVP functionality implemented; 98 backend tests and four Chromium journey tests passed. Live LLM provider/model and public deployment acceptance remain pending. Missing provider configuration returns a safe 503. No paid service, live-model result or public deployment is claimed. See [implementation evidence](docs/engineering/mvp-implementation.md).
+Preview and saved plans also show a connected visual path with every small task,
+dates, whole-hour effort and completion/next-action state. Select a task node to
+focus its editor or completion checkbox. Stages scroll horizontally on desktop
+and stack vertically on mobile. This visualizes the existing sequence; it does
+not introduce task dependencies. See [path verification](docs/engineering/visual-path.md).
+
+**Status:** Local MVP checkpoint: real Qwen 3, visual paths, plan guidance and task-help prompt export. Backend regression: 144 passed; frontend unit tests: 14 passed; synthetic/live-mode browser suites: 9/6 passed. A reported goal-alignment failure remains unresolved: background details can displace the user's primary goal despite valid output structure. Public deployment is pending. Work is paused until the developer returns. See [checkpoint and follow-up](docs/engineering/mvp-closeout.md).
 
 ## Requirements
 
@@ -39,7 +45,7 @@ dotnet ef migrations script --project backend/Pathway.Api
 dotnet ef database update --project backend/Pathway.Api
 ```
 
-Startup never changes schema. The three migrations create sessions/goals, add timezone/concurrency fields, then create answers/milestones/tasks. The timezone migration uses UTC for any pre-existing goals. Scheduled expired-data cleanup is deferred.
+Startup never changes schema. The four migrations create sessions/goals, add timezone/concurrency fields, create answers/milestones/tasks, then add guidance metadata. The timezone migration uses UTC for any pre-existing goals; the guidance migration preserves rows with nullable/empty metadata. Scheduled expired-data cleanup is deferred.
 
 ## HTTPS development
 
@@ -77,16 +83,31 @@ The frontend first calls GET /api/v1/sessions/me; only 401 triggers Antiforgery 
 
 ## Planning provider configuration
 
-Provider/model/budget is an open decision. No provider is called until the operator explicitly configures it. The optional Ollama protocol adapter accepts:
+The current local integration candidate is Qwen 3 4B Instruct; Qwen 2.5 1.5B remains a lightweight baseline. This is not a final product-model decision. No provider is called until the operator explicitly configures it. The Ollama protocol adapter accepts:
 
 ```text
 Planning__Endpoint=http://127.0.0.1:11434/api/generate
-Planning__Model=<an-existing-operator-selected-model>
+Planning__Model=qwen3:4b-instruct-2507-q4_K_M
 ```
 
 Endpoint/model are server-only trusted configuration, never browser input. Use a local endpoint or HTTPS for remote sensitive data. No Ollama server or model is installed by this repository. Before enabling a remote provider, consider data transfer and any usage cost. Other provider protocols can implement IPlanGenerator without changing scheduling/persistence.
 
 The adapter requests a structured schema, allows 90 seconds, limits output to 128 KiB and validates titles/counts/whole-hour estimates. It performs no automatic retry. Provider failure gives 503; malformed/oversized output gives 502, with no saved tasks.
+
+New plans include stage purpose/outcome, task descriptions/key points and up to
+two resource suggestions per stage. Resource names, purposes and search keywords
+are AI suggestions, **not verified references**. The UI provides a search link
+constructed from the keywords rather than opening model-generated URLs. Existing
+plans remain usable but do not automatically acquire guidance; create a new goal
+to try the richer generation flow. See [ADR-005](docs/decisions/005-plan-guidance.md).
+
+If a task is still hard to start, expand **這一步怎麼開始？** in its preview or
+saved task. Review the generated context prompt, optionally include goal notes or
+planning answers (both excluded by default), describe the obstacle and edit the
+text before copying it to an external LLM. No API request or external transmission
+is made by the feature. The draft stays in page memory; an explicit copy writes
+to the clipboard, with manual text selection if clipboard permission is denied.
+No subgoal is created and external answers are not automatically imported.
 
 ## Manual acceptance
 
@@ -141,6 +162,53 @@ This explicitly skips browser tests and must not be reported as a browser pass.
 
 The runner terminates its own processes and removes its disposable container/network, including failures. It never uses development data.
 
+## Real Qwen acceptance and local demo
+
+With Ollama running locally and the selected model already downloaded:
+
+```bash
+# Real Chromium → Vue → Backend → Ollama, with direct PostgreSQL checks.
+bash scripts/test-live.sh
+
+# Run acceptance, then keep the isolated environment available for manual use.
+PATHWAY_E2E_KEEP_RUNNING=1 bash scripts/test-live.sh
+```
+
+This explicitly uses `http://127.0.0.1:11434/api/generate` and
+`qwen3:4b-instruct-2507-q4_K_M`, with no synthetic upstream or provider fallback.
+It creates a unique test PostgreSQL project, applies existing migrations and
+starts the existing HTTPS Backend and Vite on ports 7040/5173. Only that Backend
+process receives the test connection string and planning configuration. Existing
+development data and `.env` are untouched. The live browser case verifies saved
+answers, unsaved preview, edited confirmation, SQL rows/dates/minutes, reload,
+completion persistence, session isolation and missing-CSRF rejection.
+
+After the keep-running message, open **https://localhost:5173 in a private browser
+window** to avoid mixing the demo cookie with an existing localhost development
+session. The automated browser uses a separate session, so start a new goal in
+your manual browser. Prompts/UI retain the current Traditional Chinese behavior.
+The runner reuses `frontend/secrets/localhost.pem` and `.key` if present, otherwise
+generates a temporary certificate. Your browser must trust the public certificate;
+the automated browser's temporary-certificate acceptance is test-only.
+
+The demo database is disposable tmpfs, not durable development storage. Ctrl+C in
+the terminal running the command stops its services and removes its test database.
+Normal mode also cleans up on completion/failure. No downloaded model is deleted.
+
+To run a newer isolated demo while preserving an already-running 5173 environment:
+
+```bash
+PATHWAY_E2E_FRONTEND_PORT=5174 PATHWAY_E2E_BACKEND_PORT=7041 \
+  PATHWAY_E2E_KEEP_RUNNING=1 bash scripts/test-live.sh
+```
+
+Open **https://localhost:5174** using another browser or an independent browser
+profile if preserving an existing demo's anonymous session. Localhost cookies are
+shared across ports; changing ports isolates service/data resources, not cookies.
+This creates a new disposable database and applies migrations there, leaving the
+old environment/database untouched. For manually started Vite, matching overrides
+are `PATHWAY_DEV_PORT` and `PATHWAY_API_PORT` (defaults 5173/7040).
+
 ## Single-origin local publish
 
 ```bash
@@ -168,4 +236,4 @@ The publish script builds Vue and copies assets to API wwwroot. Kestrel serves f
 - [Architecture](docs/architecture/overview.md), [database](docs/architecture/database.md), [API](docs/architecture/api.md)
 - [ADRs](docs/decisions/), [engineering evidence](docs/engineering/), [portfolio attribution](docs/portfolio.md)
 
-Local commits are permitted for milestone tracking. Nothing is pushed automatically.
+Git commits require explicit user approval. Nothing is pushed automatically.

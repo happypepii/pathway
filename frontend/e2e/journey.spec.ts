@@ -44,7 +44,7 @@ test('complete UI journey persists edits, isolates sessions, tracks and reopens 
 
   const other = await browser.newContext({ ignoreHTTPSErrors: true })
   const otherPage = await other.newPage()
-  await otherPage.goto('https://localhost:5173')
+  await otherPage.goto(new URL(page.url()).origin)
   await expect(otherPage.getByRole('heading', { name: '從一個目標開始' })).toBeVisible()
   await other.close()
 

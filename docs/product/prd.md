@@ -1,7 +1,7 @@
 # Pathway — Product Requirements Document
 
 **Version:** 0.1  
-**Status:** MVP functionality implemented; automated backend and Chromium journey verification passed; live provider and public deployment acceptance pending
+**Status:** Local MVP checkpoint: real-Qwen/browser/SQL flow verified; goal-alignment quality gap and public deployment remain unresolved. Work is paused pending the developer's return and scope discussion.
 **Target:** 3-week MVP, week 4 as buffer
 
 ## Vision
@@ -34,6 +34,9 @@ People managing personal learning, career, fitness or project goals. The product
 - Deterministic sequential scheduling based on available weekly hours.
 - Editable plan preview; explicit confirmation.
 - Dashboard with goal progress and next unfinished task.
+- Visual path containing every milestone/task, current next action and completion state; clickable in preview and saved plans.
+- Stage purpose/outcome, actionable task descriptions/key points and explicitly unverified resource names/search directions, preserved through confirmation and reload.
+- Local editable task-help prompt export, with optional context selection and manual copying to an external LLM.
 - Validation, failure states and basic automated tests.
 
 ## Scheduling assumptions (MVP)
@@ -53,7 +56,7 @@ People managing personal learning, career, fitness or project goals. The product
 
 ## Out of scope
 
-Accounts, cross-device sync, notifications, calendar integrations, social features, gamification, full chatbot, complex dependency DAG, distributed infrastructure.
+Accounts, cross-device sync, notifications, calendar integrations, social features, gamification, full chatbot, nested subgoals, automatic external-LLM result import, complex dependency DAG, distributed infrastructure.
 
 ## Success criteria
 
@@ -61,7 +64,7 @@ A new visitor can complete the full journey on a deployed app; another anonymous
 
 ## Open decisions
 
-- LLM provider and request budget.
+- Final product model and public inference budget; the current local integration candidate is Qwen 3 4B Instruct.
 - Timing and retention policy for scheduled deletion of expired session data (cleanup deferred).
 - Deployment host and HTTPS/same-origin reverse proxy.
 - Whether to permit plan regeneration after activation.

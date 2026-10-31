@@ -18,7 +18,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)
-for port in (5173, 7040):
+LIVE = os.environ.get("PATHWAY_E2E_LIVE") == "1"
+FRONTEND_PORT = int(os.environ.get("PATHWAY_E2E_FRONTEND_PORT", "5173"))
+BACKEND_PORT = int(os.environ.get("PATHWAY_E2E_BACKEND_PORT", "7040"))
+BASE_URL = f"https://localhost:{FRONTEND_PORT}"
+for port in (FRONTEND_PORT, BACKEND_PORT):
+    if not 1 <= port <= 65535:
+        raise ValueError("Invalid test service port")
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", port))
 
@@ -34,12 +40,14 @@ class Fixture(BaseHTTPRequestHandler):
             self.send_response(503)
             self.end_headers()
             return
-        plan = {"milestones": [{"title": "起步", "tasks": [
-            {"title": "準備材料", "estimatedHours": 1},
-            {"title": "實作練習", "estimatedHours": 1},
-            {"title": "閱讀進階資料", "estimatedHours": 1},
+        plan = {"milestones": [{"title": "起步", "description": "建立實作基礎。", "outcome": "完成一個小成果。",
+            "resources": [{"name": "入門指南", "purpose": "了解基本操作。", "searchQuery": "入門 實作 指南"}], "tasks": [
+            {"title": "準備材料", "estimatedHours": 1, "description": "列出需要的材料。", "keyPoints": ["先用現有資源。"]},
+            {"title": "實作練習", "estimatedHours": 1, "description": "完成第一次練習。", "keyPoints": ["記錄結果。"]},
+            {"title": "閱讀進階資料", "estimatedHours": 1, "description": "閱讀適合的進階內容。", "keyPoints": ["整理筆記。"]},
         ]}]}
-        body = json.dumps({"response": json.dumps(plan, ensure_ascii=False)}).encode()
+        body = json.dumps({"response": json.dumps(plan, ensure_ascii=False),
+                           "done": True, "done_reason": "stop"}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -47,7 +55,7 @@ class Fixture(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 def http_journey(tls):
-    base = "https://localhost:5173"
+    base = BASE_URL
     def browser():
         return urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
@@ -111,23 +119,29 @@ with tempfile.TemporaryDirectory(prefix="pathway-e2e-") as temporary:
                     "-keyout", key, "-out", cert, "-days", "1", "-subj", "/CN=localhost",
                     "-addext", "subjectAltName=DNS:localhost"], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    upstream = ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
-    threading.Thread(target=upstream.serve_forever, daemon=True).start()
+    upstream = None if LIVE else ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
+    if upstream is not None:
+        threading.Thread(target=upstream.serve_forever, daemon=True).start()
+    if LIVE and (ROOT / "frontend/secrets/localhost.pem").exists() and (ROOT / "frontend/secrets/localhost.key").exists():
+        cert = str(ROOT / "frontend/secrets/localhost.pem")
+        key = str(ROOT / "frontend/secrets/localhost.key")
     env = os.environ.copy()
     env.update({
         "ASPNETCORE_ENVIRONMENT": "Production",
         "ASPNETCORE_Kestrel__Certificates__Default__Path": cert,
         "ASPNETCORE_Kestrel__Certificates__Default__KeyPath": key,
         "PATHWAY_DEV_CERT": cert, "PATHWAY_DEV_KEY": key,
-        "Planning__Endpoint": f"http://127.0.0.1:{upstream.server_port}/api/generate",
-        "Planning__Model": "test-fixture-not-live-model",
+        "PATHWAY_DEV_PORT": str(FRONTEND_PORT), "PATHWAY_API_PORT": str(BACKEND_PORT),
+        "PATHWAY_E2E_BASE_URL": BASE_URL,
+        "Planning__Endpoint": "http://127.0.0.1:11434/api/generate" if LIVE else f"http://127.0.0.1:{upstream.server_port}/api/generate",
+        "Planning__Model": "qwen3:4b-instruct-2507-q4_K_M" if LIVE else "test-fixture-not-live-model",
     })
     processes = []
     log = open(temporary + "/services.log", "w")
     try:
         processes.append(subprocess.Popen([
             "dotnet", "run", "--project", "backend/Pathway.Api",
-            "--no-build", "--no-launch-profile", "--urls", "https://localhost:7040",
+            "--no-build", "--no-launch-profile", "--urls", f"https://localhost:{BACKEND_PORT}",
         ], env=env, stdout=log, stderr=log))
         processes.append(subprocess.Popen([
             "node", "frontend/node_modules/vite/bin/vite.js", "frontend",
@@ -138,17 +152,25 @@ with tempfile.TemporaryDirectory(prefix="pathway-e2e-") as temporary:
             if any(p.poll() is not None for p in processes):
                 raise RuntimeError("A test service exited before startup; check local prerequisites.")
             try:
-                with urllib.request.urlopen("https://localhost:5173/api/v1/antiforgery", context=tls, timeout=1) as response:
+                with urllib.request.urlopen(BASE_URL + "/api/v1/antiforgery", context=tls, timeout=1) as response:
                     assert response.status == 200
                 break
             except Exception:
                 if attempt == 119:
                     raise
                 time.sleep(.25)
-        http_journey(tls)
+        if not LIVE:
+            http_journey(tls)
         if os.environ.get("PATHWAY_E2E_HTTP_ONLY") != "1":
             subprocess.run(["frontend/node_modules/.bin/playwright", "test",
                             "--config", "frontend/playwright.config.ts"], env=env, check=True)
+        if LIVE and os.environ.get("PATHWAY_E2E_KEEP_RUNNING") == "1":
+            print(f"Live MVP accepted. Open {BASE_URL} (isolated test database). Ctrl+C stops this environment.", flush=True)
+            while all(process.poll() is None for process in processes):
+                time.sleep(1)
+            raise RuntimeError("A live demo service stopped.")
+    except KeyboardInterrupt:
+        pass
     finally:
         for process in reversed(processes):
             process.terminate()
@@ -158,6 +180,7 @@ with tempfile.TemporaryDirectory(prefix="pathway-e2e-") as temporary:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
-        upstream.shutdown()
-        upstream.server_close()
+        if upstream is not None:
+            upstream.shutdown()
+            upstream.server_close()
         log.close()

@@ -2,6 +2,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ensureSession } from './session'
 import { api, type Goal, type GoalDetail, type Preview, type Task } from './api'
+import PlanPath from './components/PlanPath.vue'
+import PlanGuidance from './components/PlanGuidance.vue'
+import TaskHelpPrompt from './components/TaskHelpPrompt.vue'
 
 const goals = ref<Goal[]>([])
 const selected = ref<GoalDetail | null>(null)
@@ -72,8 +75,10 @@ async function confirmPlan() {
   const id = selected.value!.id
   await api('/goals/' + id + '/plan', 'POST', {
     goalVersion: preview.value!.goalVersion,
-    milestones: preview.value!.milestones.map(m => ({ title: m.title,
-      tasks: m.tasks.map(t => ({ title: t.title, estimatedHours: t.estimatedHours })) })),
+    milestones: preview.value!.milestones.map(m => ({ title: m.title, description: m.description,
+      outcome: m.outcome, resources: m.resources,
+      tasks: m.tasks.map(t => ({ title: t.title, estimatedHours: t.estimatedHours,
+        description: t.description, keyPoints: t.keyPoints })) })),
   })
   await refresh()
   await openGoal(id)
@@ -139,16 +144,20 @@ onMounted(() => run(initialize))
             </template>
             <form v-else @submit.prevent="run(confirmPlan)">
               <h2>確認之前，先調整成你的步調</h2>
+              <PlanPath :goal-title="selected.title" :milestones="preview.milestones" preview :dates-stale="editedPreview" />
               <p>共 {{ previewHours }} 小時。你可以修改名稱、整數時數或移除任務。</p>
               <div v-if="!preview.schedule.isFeasible" class="alert" role="status">{{ preview.schedule.warnings.join(' ') }}</div>
               <p class="muted">{{ editedPreview ? '你已修改預覽；下列日期為原始估計，確認時伺服器會重新計算可行性與日期。' : '預計 ' + preview.schedule.startDate + ' 至 ' + preview.schedule.endDate + '。日期表示容量分配估計，不是每日預約。' }}</p>
               <div v-for="(milestone, m) in preview.milestones" :key="m" class="milestone">
                 <label>階段名稱<input v-model="milestone.title" required maxlength="200" @input="editedPreview = true"></label>
+                <PlanGuidance :description="milestone.description" :outcome="milestone.outcome" :resources="milestone.resources" />
                 <div v-for="(task, t) in milestone.tasks" :key="t" class="preview-task">
-                  <label>任務名稱<input v-model="task.title" required maxlength="200" @input="editedPreview = true"></label>
+                  <label>任務名稱<input :id="`preview-task-${m}-${t}`" v-model="task.title" required maxlength="200" @input="editedPreview = true"></label>
                   <label>預估小時<input v-model.number="task.estimatedHours" required type="number" min="1" max="1000" step="1" @input="editedPreview = true"></label>
                   <button type="button" class="danger" :disabled="busy" :aria-label="'移除 ' + task.title" @click="removeTask(m, t)">移除</button>
                   <small class="muted">{{ task.scheduledStartDate }} → {{ task.scheduledEndDate }}</small>
+                  <PlanGuidance :description="task.description" :key-points="task.keyPoints" />
+                  <TaskHelpPrompt :goal="selected" :milestone="milestone" :task="task" :answers="answers" />
                 </div>
               </div>
               <p v-if="preview.milestones.length === 0" class="alert">至少保留一項任務才能確認。</p>
@@ -161,12 +170,18 @@ onMounted(() => run(initialize))
             <p>已完成 {{ selected.completedTasks }} / {{ selected.totalTasks }} 項任務 · {{ selected.progress }}%</p>
             <progress :value="selected.progress" max="100" :aria-label="'目標完成度 ' + selected.progress + '%'" />
             <div v-if="selected.schedule && !selected.schedule.isFeasible" class="alert">{{ selected.schedule.warnings.join(' ') }}</div>
+            <PlanPath :goal-title="selected.title" :milestones="selected.milestones" />
             <div v-for="milestone in selected.milestones" :key="milestone.id" class="milestone">
               <h3>{{ milestone.title }}</h3>
-              <label v-for="task in milestone.tasks" :key="task.id" class="saved-task">
-                <input type="checkbox" :checked="task.completed" :disabled="busy" @change="changeTask($event, task)">
-                <span :class="{ done: task.completed }">{{ task.title }}<small>{{ task.estimatedHours }} 小時 · {{ task.scheduledStartDate }} → {{ task.scheduledEndDate }}</small></span>
-              </label>
+              <PlanGuidance :description="milestone.description" :outcome="milestone.outcome" :resources="milestone.resources" />
+              <div v-for="task in milestone.tasks" :key="task.id" class="saved-task-block">
+                <label class="saved-task">
+                  <input :id="`saved-task-${task.id}`" type="checkbox" :checked="task.completed" :disabled="busy" @change="changeTask($event, task)">
+                  <span :class="{ done: task.completed }">{{ task.title }}<small>{{ task.estimatedHours }} 小時 · {{ task.scheduledStartDate }} → {{ task.scheduledEndDate }}</small></span>
+                </label>
+                <PlanGuidance :description="task.description" :key-points="task.keyPoints" />
+                <TaskHelpPrompt :goal="selected" :milestone="milestone" :task="task" :answers="selected.answers" />
+              </div>
             </div>
           </div>
         </section>

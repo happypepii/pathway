@@ -138,3 +138,67 @@ disposable containers/networks were removed. The navigation regression is now
 browser-verified. Earlier environment blockers above are resolved; live-model and
 public deployment acceptance remain pending. Implementation/tests remain
 AI-generated under developer requirements, not developer-led implementation.
+
+## 9. Local model feasibility experiments — Integration Pending
+
+Developer selected the initial Qwen model and requested a Gemma comparison;
+Codex generated and executed synthetic experiments. The developer installed
+Ollama in WSL. See [local Ollama evidence](engineering/ollama-local-validation.md).
+Qwen 1.5B and Gemma 3 4B returned English JSON passing experimental schema checks.
+Gemma required partial CPU offload on the 4 GiB GPU; measured reload/warm requests
+took 60.803/23.609 seconds. These small samples do not establish general quality,
+performance improvements, actual Backend integration or developer-led model work.
+
+The developer then requested Gemma removal and a Qwen 3 4B comparison. Codex
+deleted the Gemma model and tested Qwen 3 with the same synthetic contract:
+reload/warm requests took 38.747/15.232 seconds, both passing experimental checks.
+Ollama reported 18%/82% CPU/GPU allocation. These observations are recorded in the
+same evidence file; product model selection and actual Backend acceptance remain
+pending, with no general performance/quality superiority asserted.
+
+## 10. Real Qwen local MVP — Acceptance Passed, Review Pending
+
+Developer selected Qwen 3 as a candidate and prioritized a demonstrable MVP.
+Codex generated a live mode for the existing harness and executed one Chromium
+journey through Vue, the real Backend adapter, local Ollama and PostgreSQL.
+The preview took 20,008 ms and produced four milestones/eight tasks. Direct SQL
+verified unsaved preview and exact saved task titles/minutes/dates; browser reload,
+completion persistence, ownership isolation and missing-CSRF rejection passed.
+Full backend regression: 126 passed; frontend unit suite: 10 passed; builds passed.
+See [live acceptance evidence](engineering/mvp-live-acceptance.md) for limitations,
+reproduction and attribution. Public deployment, product-model quality validation
+and developer code review remain pending. No independent developer implementation
+or general performance improvement is asserted.
+
+## 11. Complete visual path — Review Pending
+
+Developer requested a tree/graph view containing every small task and approved
+sequential order. Codex generated the Vue/CSS path, editor/checkbox navigation and
+tests. Two deterministic Chromium cases, one updated real-Qwen journey, ten
+frontend unit tests and the production build passed. Saved plans require no data
+migration. See [visual-path evidence](engineering/visual-path.md) for methods,
+limitations and attribution. Explanations/resources remain a later slice; no
+developer-led implementation or performance improvement is asserted.
+
+## 12. Plan guidance — Acceptance Passed, Review Pending
+
+The developer requested explanations, key points and learning resources. Codex
+implemented bounded structured guidance, backward-compatible confirmation,
+additive persistence and plain-text UI/search suggestions. Actual verification:
+144 backend tests; 7 synthetic and 4 live-mode browser cases; 10 frontend unit
+tests; builds. The live Qwen plan took 59,282 ms and persisted 3 stages, 9 task
+descriptions, 18 key points and 3 resource suggestions. The migration upgrade test
+preserved seeded legacy rows. See [guidance evidence](engineering/plan-guidance.md)
+and [ADR-005](decisions/005-plan-guidance.md). Resource accuracy and language
+consistency remain unverified; no developer-led implementation or performance
+improvement is claimed.
+
+## 13. Local MVP closeout — Deep Dive Next
+
+Developer authorized the final portable-context prompt feature and a local MVP
+commit, then a transition to developer-led Mode B. Codex generated the export
+slice and tests. Final evidence: 14 frontend tests, 9 synthetic browser cases,
+6 live-mode cases (one real Qwen flow), build checks, and the earlier unchanged
+Backend's 144-test regression. See [closeout](engineering/mvp-closeout.md).
+Public deployment remains pending. The concurrency investigation is a planned
+developer exercise; no developer-led result or resume achievement is asserted.

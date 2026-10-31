@@ -59,6 +59,9 @@ Unique `(goal_id, question_key)`.
 | id | uuid | PK |
 | goal_id | uuid | FK → goals.id; not null |
 | title | varchar(200) | not null |
+| description | varchar(1000) | nullable; stage purpose |
+| outcome | varchar(500) | nullable; expected outcome |
+| resources_json | jsonb | not null, default []; array of at most two resource suggestions |
 | sort_order | integer | not null |
 
 Unique `(goal_id, sort_order)`.
@@ -70,7 +73,8 @@ Unique `(goal_id, sort_order)`.
 | id | uuid | PK |
 | milestone_id | uuid | FK → milestones.id; not null |
 | title | varchar(200) | not null |
-| description | text | nullable |
+| description | varchar(2000) | nullable; task instructions |
+| key_points | text[] | not null, default empty array; at most three points |
 | estimated_minutes | integer | not null; CHECK > 0 and divisible by 60 |
 | scheduled_start_date | date | nullable |
 | scheduled_end_date | date | nullable |
@@ -112,3 +116,10 @@ Composite PK `(task_id, depends_on_task_id)`; CHECK task_id != depends_on_task_i
 ## Current planning persistence
 
 Goal activation uses a row lock inside a transaction; the goal version and Draft state are checked before inserts. Completion and parent status are saved atomically. Planning answers have a 2,000-character check; tasks store positive minutes divisible by 60 and ordered unique positions. All IDs are application-assigned UUIDs. No new migration is automatically applied on startup.
+
+`20261031042128_PlanGuidance` adds only the stage guidance fields and task
+key_points. Existing rows receive null descriptions/outcomes and empty arrays;
+original task descriptions and other planning data are retained. Resource objects
+contain name/purpose/searchQuery; they are bounded display metadata serialized by
+the application to JSONB, not separately addressable resources or verified links.
+See ADR-005 and docs/engineering/plan-guidance.md for validation and upgrade tests.

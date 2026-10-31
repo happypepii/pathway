@@ -2,8 +2,10 @@ using Pathway.Api.Application.Planning;
 
 namespace Pathway.Api.Domain;
 
-public sealed record ScheduledTask(string Title, int EstimatedHours, DateOnly ScheduledStartDate, DateOnly ScheduledEndDate);
-public sealed record ScheduledMilestone(string Title, List<ScheduledTask> Tasks);
+public sealed record ScheduledTask(string Title, int EstimatedHours, DateOnly ScheduledStartDate, DateOnly ScheduledEndDate,
+    string? Description = null, List<string>? KeyPoints = null);
+public sealed record ScheduledMilestone(string Title, List<ScheduledTask> Tasks,
+    string? Description = null, string? Outcome = null, List<ResourceInput>? Resources = null);
 public sealed record ScheduleSummary(int TotalEstimatedHours, bool IsFeasible, DateOnly StartDate, DateOnly EndDate, string[] Warnings);
 public sealed record PlanPreview(List<ScheduledMilestone> Milestones, ScheduleSummary Schedule);
 
@@ -25,9 +27,11 @@ public static class SequentialScheduler
                 var begins = start.AddDays(total * 7 / weeklyHours);
                 total += task.EstimatedHours;
                 var ends = start.AddDays((total * 7 - 1) / weeklyHours);
-                tasks.Add(new(task.Title.Trim(), task.EstimatedHours, begins, ends));
+                tasks.Add(new(task.Title.Trim(), task.EstimatedHours, begins, ends,
+                    task.Description?.Trim(), task.KeyPoints?.Select(p => p.Trim()).ToList() ?? []));
             }
-            milestones.Add(new(milestone.Title.Trim(), tasks));
+            milestones.Add(new(milestone.Title.Trim(), tasks, milestone.Description?.Trim(), milestone.Outcome?.Trim(),
+                milestone.Resources?.Select(r => new ResourceInput(r.Name.Trim(), r.Purpose.Trim(), r.SearchQuery.Trim())).ToList() ?? []));
         }
         var end = milestones[^1].Tasks[^1].ScheduledEndDate;
         var feasible = end <= target;

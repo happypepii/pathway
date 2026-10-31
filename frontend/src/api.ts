@@ -40,12 +40,18 @@ export interface Goal {
 export interface Task {
   id?: string
   title: string
+  description?: string | null
+  keyPoints?: string[]
   estimatedHours: number
   scheduledStartDate: string
   scheduledEndDate: string
   completed?: boolean
 }
-export interface Milestone { id?: string; title: string; tasks: Task[] }
+export interface ResourceSuggestion { name: string; purpose: string; searchQuery: string }
+export interface Milestone {
+  id?: string; title: string; tasks: Task[]
+  description?: string | null; outcome?: string | null; resources?: ResourceSuggestion[]
+}
 export interface Schedule { totalEstimatedHours: number; isFeasible: boolean; startDate: string; endDate: string; warnings: string[] }
 export interface Preview { milestones: Milestone[]; schedule: Schedule; goalVersion: string }
 export interface GoalDetail extends Goal {

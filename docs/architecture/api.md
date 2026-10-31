@@ -1,6 +1,6 @@
 # REST API Contract — v0.1
 
-Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. Anonymous session, Goal, planning and task endpoints are implemented. Live LLM configuration/verification is pending; see the engineering record.
+Base path: `/api/v1`. JSON request/response bodies; UUID identifiers. Anonymous session, Goal, planning and task endpoints are implemented. A local real-Qwen Chromium/Backend/PostgreSQL journey is verified; see docs/engineering/mvp-live-acceptance.md. Public deployment remains pending.
 
 ## Anonymous sessions
 
@@ -137,6 +137,14 @@ All three answers are optional (2,000 characters each). The fixed questions are 
 
 POST /goals/{id}/plan-preview has no body. It uses stored answers, returns milestones, schedule and goalVersion, and saves no milestones/tasks. It is limited to five attempts per IP per minute. Unavailable/unconfigured/timeout provider returns 503; invalid or oversized provider response returns 502. Requests have no automatic provider retry.
 
+The native Ollama adapter accepts an object envelope with `done: true`,
+`done_reason: "stop"` and a string `response`. Missing/unknown completion reasons,
+`length`, load/unload responses and non-object envelopes are safe output errors.
+Inner plan property names are case-sensitive and unknown fields are rejected at
+the plan, milestone and task levels, matching the generated schema. Other Ollama
+envelope metadata is allowed. This strictness is adapter-local; confirmation's
+handling of client-supplied dates is unchanged.
+
 POST /goals/{id}/plan accepts:
 ```json
 {
@@ -153,3 +161,27 @@ Confirmation locks the owned goal, verifies Draft and version, revalidates and r
 PATCH /tasks/{id}/completion accepts a required boolean completed and returns 204. Reopening is supported. Parent goal becomes Completed only when all tasks are complete; reopening makes it Active. PATCH /tasks/{id} accepts a trimmed title (1–200 characters) to rename a task; effort/date edits after activation are deferred. Every task query checks ownership through milestone → goal.
 
 Concurrent modifications return 409 and require refresh/retry. GET detail and list responses use no-store. Frontend writes use the Antiforgery cookie/header pair described above.
+
+## Plan guidance (US-08)
+
+Preview, confirmation and saved detail/list milestone objects now include optional
+`description`, `outcome` and `resources`. Task objects include `description` and
+`keyPoints`. Confirmation accepts missing metadata for old clients/plans, validates
+any supplied values and stores the metadata in the same activation transaction.
+New provider output requires these fields, with at least one resource and key
+point; missing guidance yields the existing safe 502.
+
+| Field | Limit |
+|---|---|
+| milestone.description | 1–1,000 characters when supplied |
+| milestone.outcome | 1–500 characters when supplied |
+| milestone.resources | at most 2 objects with name/purpose/searchQuery |
+| resource.name / purpose / searchQuery | 200 / 400 / 200 characters, nonempty |
+| task.description | 1–2,000 characters when supplied |
+| task.keyPoints | at most 3 nonempty strings, each at most 200 characters |
+
+Resource fields reject HTTP(S)/www URL text and unknown provider fields. UI shows
+plain names/purposes plus an encoded search link to a fixed search-engine origin,
+explicitly marked AI-generated and unverified. No provider/browser-supplied URL is
+used as an href. No web search or source verification occurs during generation.
+Old saved plans return null/empty metadata and retain their original path.

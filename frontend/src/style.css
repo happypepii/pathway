@@ -42,6 +42,13 @@ footer { padding: 2rem 0; border-top: 1px solid #dbe3d9; }
 .saved-task { display: flex; align-items: center; gap: .8rem; padding: .9rem 0; border-bottom: 1px solid #e8ece4; cursor: pointer; }
 .saved-task input { width: 1.25rem; height: 1.25rem; accent-color: #296351; flex-shrink: 0; }
 .saved-task small { display: block; color: #708174; font-size: .75rem; font-weight: 400; }
+.saved-task:focus-within, .preview-task:focus-within { outline: 2px solid #acccb5; outline-offset: 5px; border-radius: 5px; }
+.preview-task > .plan-guidance { grid-column: 1 / -1; }
+.preview-task > .task-help { grid-column: 1 / -1; }
+.saved-task-block { border-bottom: 1px solid #e8ece4; padding-bottom: .6rem; }
+.saved-task-block .saved-task { border-bottom: 0; }
+.saved-task-block > .plan-guidance { margin-left: 2rem; }
+.saved-task-block > .task-help { margin-left: 2rem; }
 .done { text-decoration: line-through; color: #839185; }
 .next-action { background: #edf3e9; padding: 1rem; border-left: 3px solid #517d58; border-radius: 5px; font-size: 1.1rem; }
 progress { width: 100%; height: .65rem; accent-color: #296351; }

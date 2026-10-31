@@ -16,6 +16,9 @@ public sealed class Milestone
     public Guid GoalId { get; set; }
     public Goal Goal { get; set; } = null!;
     public required string Title { get; set; }
+    public string? Description { get; set; }
+    public string? Outcome { get; set; }
+    public string ResourcesJson { get; set; } = "[]";
     public int SortOrder { get; set; }
     public List<PlanTask> Tasks { get; set; } = [];
 }
@@ -27,6 +30,7 @@ public sealed class PlanTask
     public Milestone Milestone { get; set; } = null!;
     public required string Title { get; set; }
     public string? Description { get; set; }
+    public string[] KeyPoints { get; set; } = [];
     public int EstimatedMinutes { get; set; }
     public DateOnly? ScheduledStartDate { get; set; }
     public DateOnly? ScheduledEndDate { get; set; }

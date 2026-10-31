@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 using Pathway.Api.Domain;
 
@@ -31,6 +33,37 @@ public sealed class PersistenceTests(PostgresFixture database) : IClassFixture<P
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
+
+    [Fact]
+    public async Task Guidance_migration_preserves_existing_plan_rows_and_supplies_empty_metadata()
+    {
+        // This fixture owns a GUID-named disposable database, never development data.
+        await using var context = database.CreateContext();
+        var migrator = context.Database.GetService<IMigrator>();
+        await migrator.MigrateAsync("20261030153634_PlanningTables");
+        try
+        {
+            var goal = Goal(Session());
+            context.Goals.Add(goal);
+            await context.SaveChangesAsync();
+            var milestone = Guid.NewGuid();
+            var task = Guid.NewGuid();
+            await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO milestones (id, goal_id, title, sort_order) VALUES ({milestone}, {goal.Id}, 'Legacy stage', 0)");
+            await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO tasks (id, milestone_id, title, description, estimated_minutes, scheduled_start_date, scheduled_end_date, sort_order) VALUES ({task}, {milestone}, 'Legacy task', 'Existing notes', 120, DATE '2026-10-31', DATE '2026-11-01', 0)");
+            await migrator.MigrateAsync();
+            await using var reader = database.CreateContext();
+            var saved = await reader.Milestones.Include(x => x.Tasks).SingleAsync();
+            Assert.Equal(milestone, saved.Id);
+            Assert.Null(saved.Description);
+            Assert.Null(saved.Outcome);
+            Assert.Equal("[]", saved.ResourcesJson);
+            Assert.Equal(task, saved.Tasks[0].Id);
+            Assert.Equal("Existing notes", saved.Tasks[0].Description);
+            Assert.Empty(saved.Tasks[0].KeyPoints);
+            Assert.Equal(120, saved.Tasks[0].EstimatedMinutes);
+        }
+        finally { await migrator.MigrateAsync(); }
+    }
 
     [Fact]
     public async Task Migration_creates_only_expected_tables_columns_and_indexes()

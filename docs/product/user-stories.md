@@ -1,6 +1,6 @@
 # User Stories and Acceptance Criteria
 
-**Status:** MVP functionality implemented; backend and four Chromium journey tests passed. Live provider and public deployment acceptance remain pending (see docs/engineering/mvp-implementation.md). A **user journey** spans the entire product; an **epic** groups related capabilities; each **user story** captures independently valuable behavior. Implementation tasks are not user stories.
+**Status:** Local MVP accepted with real Qwen 3 through Chromium/Backend/PostgreSQL; 126 backend tests passed. Public deployment remains pending (see docs/engineering/mvp-live-acceptance.md). A **user journey** spans the entire product; an **epic** groups related capabilities; each **user story** captures independently valuable behavior. Implementation tasks are not user stories.
 
 ## Epic: Goal planning and execution
 
@@ -59,6 +59,46 @@ As a user, I want to mark tasks complete and see the next step so that I can kee
 - [x] Progress is derived from saved task completion state.
 - [x] A different anonymous session cannot read or change the task.
 
+### US-07 — See the complete path
+
+As a user, I want a visual path including every small task so that I can understand
+how my next action leads toward my goal.
+
+- [x] Preview and saved plans show the goal, ordered milestones and every task as connected nodes.
+- [x] Nodes show whole-hour effort, scheduled dates and saved completion/next-step state.
+- [x] Selecting a task node focuses its existing editor or completion control using mouse or keyboard.
+- [x] Preview edits/removals update the path immediately; changed dates are identified as awaiting recalculation.
+- [x] Saved task completion/reopening and refresh keep the path consistent with the task list.
+- [x] The path is readable on mobile without page-level horizontal overflow.
+
+Connections express existing sequential order, not newly introduced dependencies.
+
+### US-08 — Understand each step and find learning resources
+
+As a user, I want explanations, key points and resource suggestions so that I
+understand how and why to carry out each part of my path.
+
+- [x] New AI plans include a stage purpose/outcome, task descriptions/key points and stage resource suggestions.
+- [x] Preview, confirmation and refresh preserve the same guidance alongside task edits.
+- [x] Resource suggestions show names, purposes and search keywords, explicitly labeled unverified; the model does not supply URLs.
+- [x] Server validates field lengths/counts and rejects URL-bearing resource suggestions.
+- [x] Existing plans remain readable without regeneration; migration preserves their rows and supplies empty metadata.
+
+The initial source policy is model-suggested names/search directions, not live web
+research or verified citations. Search links are constructed by the frontend from
+an encoded query and a fixed search-engine origin; no model-supplied URL is opened.
+
+### US-09 — Get unstuck with a portable context prompt
+
+As a user, I want an editable prompt for a task I cannot start so that I can ask
+an external LLM for help without losing the context of my path.
+
+- [x] Preview and saved tasks provide an expandable help panel carrying goal/stage/task guidance.
+- [x] Optional goal description and planning answers are excluded by default and included only by explicit selection.
+- [x] The user can describe the obstacle, edit the prompt and copy the actual edited content.
+- [x] Clipboard failure provides a selected-text manual copy fallback, including on mobile/legacy plans.
+- [x] Prompt generation/copy performs no API request, automatic external transmission, persistence or subgoal creation.
+
 ## Cross-cutting acceptance criteria
 
 - [x] Every goal-scoped operation enforces anonymous session ownership.
@@ -74,4 +114,4 @@ As a user, I want to mark tasks complete and see the next step so that I can kee
 
 ## Verification scope
 
-Checked items identify implemented behavior backed by backend/unit/HTTP integration evidence and four Chromium journey tests. Browser coverage verifies the main flow, provider failure, navigation during planning and stale-preview conflict; it does not exhaust every UI state. The provider adapter has validated-schema/failure tests and a synthetic protocol fixture. A real provider/model must still be selected and exercised, and public deployment verified, before declaring the MVP complete.
+Checked items identify implemented behavior backed by backend/unit/HTTP integration evidence, four historical synthetic Chromium cases and a real-Qwen Chromium journey. The live case verifies creation, answers, actual model preview, edited confirmation, direct SQL persistence, reload, completion and ownership. Public deployment must still be verified for the PRD's deployed-app success criterion. Neither single-model testing nor browser coverage exhausts plan quality or every UI state.

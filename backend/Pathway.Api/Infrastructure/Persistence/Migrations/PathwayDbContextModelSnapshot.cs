@@ -137,9 +137,26 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
                     b.Property<Guid>("GoalId")
                         .HasColumnType("uuid")
                         .HasColumnName("goal_id");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("ResourcesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("resources_json")
+                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
@@ -158,6 +175,8 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
 
                     b.ToTable("milestones", null, t =>
                         {
+                            t.HasCheckConstraint("ck_milestones_resources", "jsonb_typeof(resources_json) = 'array' AND jsonb_array_length(resources_json) <= 2");
+
                             t.HasCheckConstraint("ck_milestones_title", "char_length(title) BETWEEN 1 AND 200");
                         });
                 });
@@ -180,6 +199,13 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                     b.Property<int>("EstimatedMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("estimated_minutes");
+
+                    b.PrimitiveCollection<string[]>("KeyPoints")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("key_points")
+                        .HasDefaultValueSql("ARRAY[]::text[]");
 
                     b.Property<Guid>("MilestoneId")
                         .HasColumnType("uuid")
@@ -213,6 +239,8 @@ namespace Pathway.Api.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_tasks_dates", "scheduled_end_date >= scheduled_start_date");
 
                             t.HasCheckConstraint("ck_tasks_effort", "estimated_minutes > 0 AND estimated_minutes % 60 = 0");
+
+                            t.HasCheckConstraint("ck_tasks_key_points", "cardinality(key_points) <= 3");
 
                             t.HasCheckConstraint("ck_tasks_title", "char_length(title) BETWEEN 1 AND 200");
                         });

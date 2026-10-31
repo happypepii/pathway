@@ -1,5 +1,10 @@
 # MVP implementation evidence — 2026-10-30
 
+**Latest status:** local real-Qwen browser/Backend/PostgreSQL acceptance passed on
+2026-10-31; full backend regression is now 126 passed. See
+[live acceptance](mvp-live-acceptance.md). Earlier pending items below describe
+historical checkpoints; public deployment remains pending.
+
 ## Scope and baseline
 
 The developer authorized autonomous work across PRD US-01–US-06, ordinary implementation choices and local milestone commits, without remote push. Before this work only anonymous session bootstrap and persistence existed (61 backend tests passed). Goal, planning, tracking and usable frontend flows were absent.

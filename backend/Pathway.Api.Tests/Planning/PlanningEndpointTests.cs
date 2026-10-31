@@ -25,12 +25,13 @@ public sealed class PlanningEndpointTests(PostgresFixture database) : IClassFixt
     {
         public bool Invalid { get; set; }
         public bool Unavailable { get; set; }
+        public PlanInput? Result { get; set; }
         public PlanningContext? Context { get; private set; }
         public Task<PlanInput> GenerateAsync(PlanningContext context, CancellationToken ct)
         {
             Context = context;
             if (Unavailable) throw new PlanningUnavailableException();
-            return Task.FromResult(Invalid ? SchedulerTests.Plan(0) : SchedulerTests.Plan(1, 2));
+            return Task.FromResult(Invalid ? SchedulerTests.Plan(0) : Result ?? SchedulerTests.Plan(1, 2));
         }
     }
 
@@ -59,6 +60,34 @@ public sealed class PlanningEndpointTests(PostgresFixture database) : IClassFixt
         using var response = await client.PostAsync(url + "/plan-preview", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    [Fact]
+    public async Task Guidance_previews_without_writes_and_survives_confirmation_and_fresh_read()
+    {
+        using var factory = new Factory(database, new Generator { Result = GuidanceValidationTests.GuidedPlan() });
+        using var client = await GoalEndpointTests.Bootstrap(factory);
+        var url = await Create(client);
+        var preview = await Preview(client, url);
+        var stage = preview.GetProperty("milestones")[0];
+        Assert.Equal("Build a practical foundation.", stage.GetProperty("description").GetString());
+        Assert.Equal("Check the result.", stage.GetProperty("tasks")[0].GetProperty("keyPoints")[0].GetString());
+        await using (var before = database.CreateContext())
+            Assert.Empty(await before.Milestones.ToListAsync());
+        using var confirmed = await client.PostAsJsonAsync(url + "/plan", new
+        { goalVersion = preview.GetProperty("goalVersion"), milestones = preview.GetProperty("milestones") });
+        Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+        var saved = await client.GetFromJsonAsync<JsonElement>(url);
+        var savedStage = saved.GetProperty("milestones")[0];
+        Assert.Equal(stage.GetProperty("resources").GetRawText(), savedStage.GetProperty("resources").GetRawText());
+        Assert.Equal(stage.GetProperty("outcome").GetString(), savedStage.GetProperty("outcome").GetString());
+        await using var verify = database.CreateContext();
+        var row = await verify.Milestones.Include(x => x.Tasks).SingleAsync();
+        Assert.Equal("Build a practical foundation.", row.Description);
+        Assert.Equal("A working first example.", row.Outcome);
+        Assert.Contains("beginner practical guide", row.ResourcesJson);
+        Assert.Equal("Follow the instructions and create a small example.", row.Tasks[0].Description);
+        Assert.Equal(new[] { "Check the result." }, row.Tasks[0].KeyPoints);
     }
 
     [Fact]
